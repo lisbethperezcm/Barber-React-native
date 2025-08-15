@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 {
   "extends": "expo/tsconfig.base",
  "compilerOptions": {
@@ -12,18 +12,4 @@
     "expo-env.d.ts"
   ]
 }
-=======
-{
-  "extends": "expo/tsconfig.base",
- "compilerOptions": {
-    "baseUrl": ".",
-    "paths": { "@/*": ["*"] }
-  },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
-}
->>>>>>> ca2dc02 (init: proyecto limpio sin historial y .gitignore configurado)
+

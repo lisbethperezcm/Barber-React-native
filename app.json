@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 {
   "expo": {
     "name": "vip-stylist",
@@ -45,51 +45,4 @@
     }
   }
 }
-=======
-{
-  "expo": {
-    "name": "vip-stylist",
-    "slug": "vip-stylist",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "vipstylist",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "plugins": ["nativewind/babel"],
-    "ios": {
-      "supportsTablet": true
-    }, "extra": {
-      "API_URL": "https://laravelbarbershop-production.up.railway.app/api"
-    }
-    ,
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true
-    }
-  }
-}
->>>>>>> ca2dc02 (init: proyecto limpio sin historial y .gitignore configurado)
+
