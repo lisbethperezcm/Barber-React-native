@@ -97,7 +97,7 @@ export default function CitasScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             <View>{/* espacio para notificaciones si lo necesitas */}</View>
             <Pressable
-              onPress={() => {}}
+              onPress={() => { }}
               style={({ pressed }) => ({
                 width: 36,
                 height: 36,
@@ -199,7 +199,7 @@ export default function CitasScreen() {
       )}
 
       {/* Modal de acciones (kebab) */}
-      <Modal visible={actionId !== null} transparent animationType="slide" onRequestClose={() => setActionId(null)}>
+      <Modal visible={actionId !== null} transparent animationType="fade" onRequestClose={() => setActionId(null)}>
         <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.3)" }} onPress={() => setActionId(null)} />
         <View style={{ backgroundColor: "#fff", padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
           <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text, marginBottom: 12 }}>Acciones</Text>
