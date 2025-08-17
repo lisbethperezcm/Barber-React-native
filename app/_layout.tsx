@@ -4,7 +4,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { useColorScheme } from 'react-native'; // o tu hook
 import 'react-native-reanimated';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import './global.css'; // ajusta la ruta según dónde tengas el archivo
 
 const queryClient = new QueryClient();
@@ -20,15 +20,17 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <ThemeProvider value={scheme === 'dark' ?  DefaultTheme : DarkTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="login" />
-          <Stack.Screen name="+not-found" /> {/* si tu archivo se llama +not-found.tsx */}
-        </Stack>
-      </ThemeProvider>
-    </SafeAreaProvider>
-      </QueryClientProvider>
+      
+        <ThemeProvider value={scheme === 'dark' ? DefaultTheme : DarkTheme}>
+        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="login" />
+              <Stack.Screen name="+not-found" /> {/* si tu archivo se llama +not-found.tsx */}
+            </Stack>
+          </SafeAreaView>
+        </ThemeProvider>
+      
+    </QueryClientProvider>
   );
 }
