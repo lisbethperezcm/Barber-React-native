@@ -1,6 +1,7 @@
 import { useAppointments, type Appointment } from "@/assets/src/features/appointment/useAppointments";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,7 +14,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-
 type Filter = "all" | "reservadas" | "confirmadas" | "completadas";
 
 const COLORS = {
@@ -59,8 +59,11 @@ export default function CitasScreen() {
   const [query, setQuery] = useState("");
   const [actionId, setActionId] = useState<number | null>(null);
 
+
   const { data, isLoading, isFetching, refetch } = useAppointments();
   const isRefreshing = !isLoading && isFetching;
+
+
 
   const filtered = useMemo(() => {
     const list = (data ?? []) as Appointment[];
@@ -96,8 +99,10 @@ export default function CitasScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             <View>{/* espacio para notificaciones si lo necesitas */}</View>
+
+            {/* Agendar cita button */}
             <Pressable
-              onPress={() => { }}
+              onPress={() => router.push("/booking/new")}   // 👈 solo este cambio
               style={({ pressed }) => ({
                 width: 36,
                 height: 36,
@@ -243,6 +248,13 @@ export default function CitasScreen() {
           </View>
         </View>
       </Modal>
+
+     
     </View>
   );
+
+
+
+
+
 }
