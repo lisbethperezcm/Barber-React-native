@@ -73,14 +73,14 @@ export default function Dashboard() {
         {/* Acceso Rápido */}
         <Text style={styles.sectionTitle}>Acceso Rápido</Text>
         <View style={styles.quickRow}>
-          <Pressable style={styles.quickItem} onPress={() => router.push("/(tabs)/citas")}>
-            <Text style={{ fontSize: 22 }}>📅</Text>
-            <Text style={styles.quickText}>Citas</Text>
+          <Pressable style={styles.quickItem} onPress={() => router.push("/(tabs)/servicios")}>
+            <Text style={{ fontSize: 22 }}>✂️</Text>
+            <Text style={styles.quickText}>Servicios</Text>
           </Pressable>
 
           <Pressable style={styles.quickItem} onPress={() => router.push("/(tabs)/perfil")}>
             <Text style={{ fontSize: 22 }}>⭐</Text>
-            <Text style={styles.quickText}>Mis Evaluaciones</Text>
+            <Text style={styles.quickText}>Evaluaciones</Text>
           </Pressable>
         </View>
 
