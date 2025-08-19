@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useLogout } from "../../assets/src/features/auth/useLogout";
 
+
 // ⚠️ Datos simulados — reemplazar por hook de auth / API real
 const MOCK_USER = {
   firstName: "Ana",
@@ -60,6 +61,7 @@ export default function Perfil() {
     </SafeAreaView>
   );
 }
+
 
 function getInitials(first: string, last: string) {
   const f = (first || "").trim().charAt(0).toUpperCase();
