@@ -19,20 +19,25 @@ export default function Header({ notifications = 3 }: Props) {
   return (
     <View style={styles.header}>
       <Text style={styles.brand}>Vip Stylist</Text>
-
-      <Pressable style={styles.bellBtn} /*onPress={() => router.push("/notifications")}*/>
-        <Text style={{ fontSize: 20, color: COLORS.text }}>🔔</Text>
-        {notifications > 0 && (
-          <View style={styles.badge}>
-            <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>
-              {notifications}
-            </Text>
-          </View>
-        )}
-      </Pressable>
-    </View>
+      <View>
+        <Pressable
+          style={styles.bellBtn}
+          onPress={() => router.push("/notificaciones")}
+        >
+          <Text style={{ fontSize: 20, color: COLORS.text }}>🔔</Text>
+          {notifications > 0 && (
+            <View style={styles.badge}>
+              <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>
+                {notifications}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      </View>
+    </View> // ✅ closes container View
   );
 }
+
 
 const styles = StyleSheet.create({
   header: {

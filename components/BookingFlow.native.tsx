@@ -3,9 +3,9 @@
 // Metro usará este archivo automáticamente cuando importes "@/components/BookingFlow"
 // desde tu app móvil (porque termina en .native.tsx).
 
+import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-
 
 // Paleta usada en tu app
 const COLORS = {
@@ -69,8 +69,8 @@ export default function BookingFlow({
   selectedTimeSlot,
   setSelectedTimeSlot,
   onClose,
-  barbers: barbersProp,     
-  loading,                  
+  barbers: barbersProp,
+  loading,
 }: {
   step: number;
   setStep: (step: number) => void;
@@ -83,10 +83,9 @@ export default function BookingFlow({
   selectedTimeSlot: string;
   setSelectedTimeSlot: (slot: string) => void;
   onClose: () => void;
-  barbers?: { id: number; name: string; rating?: number }[]; 
-  loading?: { barbers?: boolean };                            
-})
-{
+  barbers?: { id: number; name: string; rating?: number }[];
+  loading?: { barbers?: boolean };
+}) {
   // Animaciones de entrada/salida (suaves)
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(16)).current;
@@ -129,7 +128,7 @@ export default function BookingFlow({
   const stepTitles = ["Selecciona los servicios", "Elige tu barbero", "Elige fecha y hora", "Resumen de la Reserva"];
 
   return (
-    <Animated.View style={[styles.screen, { opacity, transform: [{ translateY }] }]}>      
+    <Animated.View style={[styles.screen, { opacity, transform: [{ translateY }] }]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Agendar cita</Text>
@@ -252,7 +251,16 @@ export default function BookingFlow({
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.cardTitle}>{b.name}</Text>
-                      <Text style={styles.cardMeta}>★ {b.rating}</Text>
+
+                      <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+                        <Ionicons
+                          name="star"
+                          size={14}
+                          color="#F59E0B" // amarillo ámbar
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text style={styles.cardMeta}>{b.rating.toFixed(1)}</Text>
+                      </View>
                     </View>
                   </View>
                 </Pressable>
