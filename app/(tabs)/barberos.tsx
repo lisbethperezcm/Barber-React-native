@@ -1,5 +1,5 @@
 // app/(tabs)/BarberoStep.tsx
-import { Ionicons } from "@expo/vector-icons";
+import { useBarbers } from "@/assets/src/features/barber/useBarbers";
 import React from "react";
 import {
   FlatList,
@@ -10,19 +10,21 @@ import {
   View,
 } from "react-native";
 
+
+/*
 type Barber = {
   id: number;
   firstName: string;
   lastName: string;
   rating: number; // ej: 4.8
-};
-
+};*/
+/*
 const MOCK_BARBERS: Barber[] = [
   { id: 1, firstName: "Juan", lastName: "Pérez", rating: 4.8 },
   { id: 2, firstName: "Jhonny", lastName: "Bravo", rating: 4.9 },
   { id: 3, firstName: "Michael", lastName: "Benítez", rating: 4.6 },
   { id: 4, firstName: "Julio", lastName: "Damirón", rating: 4.7 },
-];
+];*/
 
 export default function BarberoStep({
   value,
@@ -40,12 +42,15 @@ export default function BarberoStep({
     onChange?.(id);
   };
 
+  const {data, isLoading, error, isFetching, refetch } = useBarbers();
+ const isRefreshing = !isLoading && isFetching;
+
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.sectionTitle}>Barberos</Text>
 
       <FlatList
-        data={MOCK_BARBERS}
+        data={data}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
@@ -74,15 +79,17 @@ export default function BarberoStep({
                   {item.firstName} {item.lastName}
                 </Text>
 
-                <View style={styles.ratingRow}>
+               {/* Rating 
+               <View style={styles.ratingRow}>
                   <Ionicons
                     name="star"
                     size={14}
                     color={COLORS.amber}
                     style={{ marginRight: 4 }}
                   />
-                  <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
+                 <Text style={styles.ratingText}>{item.rating.toFixed(1) ?? null}</Text> 
                 </View>
+                */}
               </View>
             </TouchableOpacity>
           );

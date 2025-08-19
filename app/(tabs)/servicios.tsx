@@ -1,12 +1,13 @@
 // app/(tabs)/Servicios.tsx
+import { useServices } from "@/assets/src/features/service/useServices";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
-    FlatList,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    View,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 type Service = {
@@ -49,9 +50,18 @@ const MOCK_SERVICES: Service[] = [
 ];
 
 export default function Servicios() {
-  const [services, setServices] = React.useState<Service[]>(MOCK_SERVICES);
-  const [refreshing, setRefreshing] = React.useState(false);
 
+  const { data, isLoading, error, isFetching, refetch } = useServices();
+  const isRefreshing = !isLoading && isFetching;
+
+  const services = data || [];
+  const [refreshing, setRefreshing] = React.useState(false);
+  React.useEffect(() => {
+    if (error) {
+      console.error("Error al cargar los servicios:", error);
+    }
+  }, [error]);
+  
   const onRefresh = async () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 600); // simula fetch
@@ -80,7 +90,7 @@ export default function Servicios() {
   );
 }
 
-function ServiceCard({ item }: { item: Service }) {
+function ServiceCard({ item }: { item}) {
   return (
     <View style={styles.card}>
       <View style={styles.iconBox}>
