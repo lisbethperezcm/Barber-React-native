@@ -75,7 +75,7 @@ export default function TabsLayout() {
         />
         {/* Ocultar pestañas sobrantes */}
         <Tabs.Screen name="explore" options={{ href: null }} />
-        <Tabs.Screen name="two" options={{ href: null }} />
+     
         <Tabs.Screen name="booking/new" options={{ href: null }} />
         <Tabs.Screen name="servicios" options={{ href: null }} />
         <Tabs.Screen name="notificaciones" options={{ href: null }} />

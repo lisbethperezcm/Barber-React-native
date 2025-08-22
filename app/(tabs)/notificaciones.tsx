@@ -1,15 +1,36 @@
 // app/(tabs)/Notificaciones.tsx
+
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-    FlatList,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+
+/*
+import { useNotifications } from "@/assets/src/features/notification/useNotifications"; // ajusta la ruta si no usas alias "@"
+import { useEffect } from "react";
+
+export default function DebugNotifications() {
+  const { data, isLoading, error } = useNotifications();
+
+  useEffect(() => {
+    if (isLoading) console.log("🔔 Cargando notificaciones…");
+    if (error) console.log("❌ Error notificaciones:", error);
+  }, [isLoading, error]);
+
+  useEffect(() => {
+    if (data) console.log("✅ Notificaciones:", JSON.stringify(data, null, 2));
+  }, [data]);
+
+  return null; // componente solo para logs
+}*/
+
 
 type NotificationType =
   | "new_appointment"
@@ -138,7 +159,7 @@ export default function Notificaciones() {
   );
 }
 
-/* Helpers visuales */
+//Helpers visuales 
 function getIconName(type: NotificationType): keyof typeof Ionicons.glyphMap {
   switch (type) {
     case "new_appointment":

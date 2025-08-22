@@ -48,7 +48,8 @@ function normalize(b: ApiBarber): Barber {
   };
 }
 
-export function useBarbers() {
+export function useBarbers(opts: { enabled?: boolean } = {}) {
+  const { enabled = true } = opts;
   return useQuery({
     queryKey: ["barbers", "all"],
     queryFn: async (): Promise<Barber[]> => {
@@ -56,7 +57,7 @@ export function useBarbers() {
       const token = await SecureStore.getItemAsync("accessToken");
       if (!token) return [];
 
-      const res = await api.get<ApiResponse>("/api/barbers");
+      const res = await api.get<ApiResponse>("/barbers");
       const payload = res.data;
 
       if (payload?.errorCode && payload.errorCode !== "200") {
@@ -67,5 +68,6 @@ export function useBarbers() {
       return list.map(normalize);
     },
     staleTime: 60_000, // 1 min, igual que appointments
+     enabled,
   });
 }

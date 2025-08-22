@@ -1,10 +1,11 @@
 import { useAppointments, type Appointment } from "@/assets/src/features/appointment/useAppointments";
 import { AppointmentCard } from "@/components/AppointmentCard";
+import Loader from "@/components/Loader";
+
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Modal,
   Platform,
@@ -12,7 +13,7 @@ import {
   RefreshControl,
   Text,
   TextInput,
-  View,
+  View
 } from "react-native";
 type Filter = "all" | "reservadas" | "confirmadas" | "completadas";
 
@@ -183,10 +184,8 @@ export default function CitasScreen() {
 
       {/* Lista */}
       {isLoading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator />
-          <Text style={{ marginTop: 8, color: COLORS.textMuted }}>Cargando citas...</Text>
-        </View>
+
+          <Loader text="Cargando citas..." />
       ) : (
         <FlatList
           data={filtered}

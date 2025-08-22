@@ -1,12 +1,13 @@
 // app/(tabs)/Servicios.tsx
+import { useServices } from "@/assets/src/features/service/useServices";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
-    FlatList,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    View,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 type Service = {
@@ -49,9 +50,18 @@ const MOCK_SERVICES: Service[] = [
 ];
 
 export default function Servicios() {
-  const [services, setServices] = React.useState<Service[]>(MOCK_SERVICES);
-  const [refreshing, setRefreshing] = React.useState(false);
 
+  const { data, isLoading, error, isFetching, refetch } = useServices();
+  const isRefreshing = !isLoading && isFetching;
+
+  const services = data || [];
+  const [refreshing, setRefreshing] = React.useState(false);
+  React.useEffect(() => {
+    if (error) {
+      console.error("Error al cargar los servicios:", error);
+    }
+  }, [error]);
+  
   const onRefresh = async () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 600); // simula fetch
@@ -65,7 +75,7 @@ export default function Servicios() {
         data={services}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        ItemSeparatorComponent={() => <View style={{ height: 2}} />}
         renderItem={({ item }) => <ServiceCard item={item} />}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -80,7 +90,7 @@ export default function Servicios() {
   );
 }
 
-function ServiceCard({ item }: { item: Service }) {
+function ServiceCard({ item }: { item}) {
   return (
     <View style={styles.card}>
       <View style={styles.iconBox}>
@@ -113,7 +123,7 @@ function formatMoney(n: number) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F7F7F8",
+    backgroundColor: "#FFFFFF",
   },
   header: {
     fontSize: 20,
@@ -132,7 +142,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 5,
     paddingVertical: 12,
     paddingHorizontal: 14,
     flexDirection: "row",
@@ -142,7 +152,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    elevation: 0.5,
   },
   iconBox: {
     width: 40,
