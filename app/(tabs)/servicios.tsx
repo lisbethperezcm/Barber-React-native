@@ -75,7 +75,7 @@ export default function Servicios() {
         data={services}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        ItemSeparatorComponent={() => <View style={{ height: 2}} />}
         renderItem={({ item }) => <ServiceCard item={item} />}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -123,7 +123,7 @@ function formatMoney(n: number) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F7F7F8",
+    backgroundColor: "#FFFFFF",
   },
   header: {
     fontSize: 20,
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 5,
     paddingVertical: 12,
     paddingHorizontal: 14,
     flexDirection: "row",
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    elevation: 0.5,
   },
   iconBox: {
     width: 40,
