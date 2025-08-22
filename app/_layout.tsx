@@ -7,6 +7,9 @@ import 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import './global.css'; // ajusta la ruta según dónde tengas el archivo
 
+
+import { AuthProvider } from "@/assets/src/context/AuthContext";
+
 const queryClient = new QueryClient();
 
 export default function RootLayout() {
@@ -22,6 +25,7 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       
         <ThemeProvider value={scheme === 'dark' ? DefaultTheme : DarkTheme}>
+            <AuthProvider>
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" />
@@ -29,6 +33,7 @@ export default function RootLayout() {
               <Stack.Screen name="+not-found" /> {/* si tu archivo se llama +not-found.tsx */}
             </Stack>
           </SafeAreaView>
+          </AuthProvider>
         </ThemeProvider>
       
     </QueryClientProvider>
