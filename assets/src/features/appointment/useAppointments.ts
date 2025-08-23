@@ -72,11 +72,13 @@ export function useAppointments() {
     queryFn: async (): Promise<Appointment[]> => {
       const token = await SecureStore.getItemAsync("accessToken");
       const client = await SecureStore.getItemAsync("client");
-const clientParsed = client ? JSON.parse(client) : null;
+    //  console.log("🔎 Request GET /clients/appointments", client);
+
+      const clientParsed = client ? JSON.parse(client) : null;
       if (!token) return [];
       console.log(client);
 
-      const { data } = await api.get<{ data: ApiAppointment[] }>("/clients/appointments", {
+      const { data } = await api.get<{ data: ApiAppointment[] }>("/clients-appointments", {
         params: clientParsed ? { client_id: clientParsed } : undefined,
       });
       const list = data?.data ?? [];

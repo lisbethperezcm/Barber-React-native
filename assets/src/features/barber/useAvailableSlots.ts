@@ -53,7 +53,7 @@ export function useAvailableSlots(
       const list = (data as any)?.data ?? (data as any) ?? [];
       return (list as ApiSlot[]).map(normalize);
     },
-    enabled: Boolean(options?.enabled && barberId && date && duration),
+    enabled: Boolean(options?.enabled && date && duration),
     staleTime: 60_000,
   });
 }

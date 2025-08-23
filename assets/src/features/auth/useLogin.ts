@@ -26,7 +26,7 @@ export function useLogin() {
       await setAuth(data.user.role);
 
      if (clientId) await SecureStore.setItemAsync("client",JSON.stringify(clientId));
-
+    
       return data;
     },
   });

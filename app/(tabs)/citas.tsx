@@ -61,9 +61,18 @@ export default function CitasScreen() {
   const [actionId, setActionId] = useState<number | null>(null);
 
 
-  const { data, isLoading, isFetching, refetch } = useAppointments();
+  const { data, isLoading, isFetching, refetch , error} = useAppointments();
   const isRefreshing = !isLoading && isFetching;
 
+// 👀 debug
+if (error) {
+  console.log("❌ Error useAppointments:", error);
+  // si es axios error, puedes inspeccionar la respuesta
+  if ((error as any).response) {
+    console.log("🔎 Error response data:", (error as any).response.data);
+    console.log("🔎 Error response status:", (error as any).response.status);
+  }
+}
 
 
   const filtered = useMemo(() => {
