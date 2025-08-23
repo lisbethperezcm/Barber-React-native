@@ -18,15 +18,21 @@ export function useLogin() {
        const token = data?.access_token;
       const type = data?.token_type ?? "Bearer";
       const clientId = data?.user.client_id;
+      const barberId = data?.user.barber_id;
+      const userName = data?.user.full_name;
+
       if (!token) throw new Error("No llegó access_token en la respuesta.");
 
       await SecureStore.setItemAsync("accessToken", token);
       await SecureStore.setItemAsync("tokenType", type);
       await SecureStore.setItemAsync("role", JSON.stringify(data.user.role));
-      await setAuth(data.user.role);
+      await setAuth(data.user.role, userName);
 
      if (clientId) await SecureStore.setItemAsync("client",JSON.stringify(clientId));
-    
+     if (barberId) await SecureStore.setItemAsync("barber", JSON.stringify(barberId));
+     if (userName) await SecureStore.setItemAsync("userName", userName);
+
+     console.log("UserName in useLogin:", userName);
       return data;
     },
   });
