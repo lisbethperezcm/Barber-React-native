@@ -94,10 +94,18 @@ export default function New() {
   const selectedServiceDetails = useMemo(() => services.filter(s => selectedServices.includes(s.id)), [services, selectedServices]);
   const totalMinutes = useMemo(() => selectedServiceDetails.reduce((acc, s) => acc + (s.duration_minutes || 0), 0), [selectedServiceDetails]);
   const enableSlotsQuery = Boolean(selectedDate && totalMinutes && (!isBarber ? selectedBarber : true)); // cliente requiere barber_id para consultar
+  
+  
   const { data: slotsApi = [], isLoading: loadingSlots, error: slotsError } = useAvailableSlots(
-    { barberId: (!isBarber ? selectedBarber : undefined), date: selectedDate, duration: totalMinutes },
+    {
+    barberId: !isBarber ? selectedBarber : undefined,
+    date: selectedDate,
+    duration: totalMinutes,
+ },
     { enabled: enableSlotsQuery }
   );
+
+
   const timeSlots: string[] = useMemo(() => Array.isArray(slotsApi) && slotsApi.length
     ? slotsApi.map((s: any) => { const left = (s.startISO ?? "").trim(); const right = (s.endISO ?? "").trim(); return right ? `${left} - ${right}` : left; })
     : TIME_SLOTS_FALLBACK, [slotsApi]);
@@ -365,6 +373,8 @@ const chosenClient = useMemo(() => clients.find(c => c.id === selectedClient) ||
                   })}
                 </View>
                 {!!slotsError && <Text style={{ color: "#b91c1c", marginTop: 4 }}>No fue posible cargar los horarios disponibles.</Text>}
+               
+
               </View>
             </View>
           )}
