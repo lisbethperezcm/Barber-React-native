@@ -9,6 +9,11 @@ export function useLogout() {
     await SecureStore.deleteItemAsync("accessToken");
     await SecureStore.deleteItemAsync("refreshToken");
     await SecureStore.deleteItemAsync("user");
+    await SecureStore.deleteItemAsync("role");
+   // await SecureStore.deleteItemAsync("userName");
+    await SecureStore.deleteItemAsync("client");
+    await SecureStore.deleteItemAsync("barber");
+
 
     // Redirigir al login
     router.replace("/login");
