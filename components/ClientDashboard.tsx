@@ -1,17 +1,21 @@
+import { AuthContext } from "@/assets/src/context/AuthContext";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useContext } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 export default function ClientDashboard({ styles }: { styles: any }) {
   const router = useRouter();
-
+     const { userName } = useContext(AuthContext);
+   
+     const userFirstName = ((userName ?? "").trim().split(/\s+/)[0]) || "";
+  console.log("UserName in ClientDashboard:", userFirstName);
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
       {/* Saludo */}
       <View style={styles.helloRow}>
         <View style={styles.avatar}><Text style={{ color: "#fff", fontWeight: "700" }}>C</Text></View>
         <View>
-          <Text style={styles.hello}>Hola, Carlos 👋</Text>
+          <Text style={styles.hello}>Hola,{userFirstName} 👋</Text>
           <Text style={styles.sub}>¿Listo para tu próximo corte?</Text>
         </View>
       </View>

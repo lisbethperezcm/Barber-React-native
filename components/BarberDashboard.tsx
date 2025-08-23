@@ -1,11 +1,16 @@
 // components/dashboards/BarberDashboard.tsx
+import { AuthContext } from "@/assets/src/context/AuthContext";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useContext } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function BarberDashboard() {
   const router = useRouter();
+  const { userName } = useContext(AuthContext);
 
+  const userFirstName = ((userName ?? "").trim().split(/\s+/)[0]) || "";
+
+console.log("UserName in BarberDashboard:", userFirstName);
   return (
     <ScrollView
       contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
@@ -15,7 +20,7 @@ export default function BarberDashboard() {
       <View style={s.helloRow}>
         <View style={s.avatar}><Text style={s.avatarTxt}>JC</Text></View>
         <View>
-          <Text style={s.hello}>Hola, Juan Carlos 👋</Text>
+          <Text style={s.hello}>Hola,{userFirstName} 👋</Text>
           <Text style={s.sub}>¿Listo para atender a tus clientes?</Text>
         </View>
       </View>
