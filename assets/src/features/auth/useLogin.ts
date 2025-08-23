@@ -18,6 +18,8 @@ export function useLogin() {
        const token = data?.access_token;
       const type = data?.token_type ?? "Bearer";
       const clientId = data?.user.client_id;
+      const barberId = data?.user.barber_id;
+
       if (!token) throw new Error("No llegó access_token en la respuesta.");
 
       await SecureStore.setItemAsync("accessToken", token);
@@ -26,7 +28,7 @@ export function useLogin() {
       await setAuth(data.user.role);
 
      if (clientId) await SecureStore.setItemAsync("client",JSON.stringify(clientId));
-    
+     if (barberId) await SecureStore.setItemAsync("barber", JSON.stringify(barberId));
       return data;
     },
   });

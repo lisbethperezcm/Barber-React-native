@@ -1,21 +1,91 @@
+import { AuthContext } from "@/assets/src/context/AuthContext";
+import api from "@/assets/src/lib/http";
 import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import * as SecureStore from "expo-secure-store";
+import React, { useContext, useEffect, useState } from "react";
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useLogout } from "../../assets/src/features/auth/useLogout";
 
-
-// ⚠️ Datos simulados — reemplazar por hook de auth / API real
-const MOCK_USER = {
-  firstName: "Ana",
-  lastName: "Pérez",
-  role: "Cliente",
-  email: "ana.perez@example.com",
-  phone: "+1 809-555-1234",
-  address: "Av. Principal #123, Santo Domingo",
-};
-
 export default function Perfil() {
+  const { isBarber, role, loading } = useContext(AuthContext);
+  const [user, setUser] = useState<any>(null);
+  const [fetching, setFetching] = useState(false);
   const logout = useLogout();
-  const initials = getInitials(MOCK_USER.firstName, MOCK_USER.lastName);
+  useEffect(() => {
+    if (loading) return;
+
+    (async () => {
+      try {
+        setFetching(true);
+
+        if (!isBarber) {
+          // --- CLIENTE ---
+          const raw = await SecureStore.getItemAsync("client");
+
+
+          let clientId = raw;
+
+          const res = await api.get(`/clients/${clientId}`);
+
+          const payload = res.data?.data; // << objeto real
+
+          console.log(payload);
+
+          setUser({
+            firstName: payload?.first_name ?? "",
+            lastName: payload?.last_name ?? "",
+            email: payload?.email ?? "",
+            phone: payload?.phone_number ?? "",
+            address: payload?.address ?? "",
+            role: "Cliente",
+          });
+        } else {
+          // --- BARBERO ---
+          const raw = await SecureStore.getItemAsync("barber");
+          console.log("Barber raw:", raw);
+
+          let barberId: any;
+          barberId = raw;
+          console.log("Barber ID:", barberId);
+          const res2 = await api.get(`/barbers/${barberId}`);
+
+          const payload2 = res2.data?.data; // << objeto real
+
+          console.log(payload2);
+
+          setUser({
+            firstName: payload2?.first_name ?? "",
+            lastName: payload2?.last_name ?? "",
+            email: payload2?.email ?? "",
+            phone: "",          // no aplica para barbero en tu payload
+            address: "",        // no aplica para barbero en tu payload
+            role: "Barbero",
+          });
+
+
+        }
+      } catch (e) {
+        console.log("Error cargando perfil:", e);
+        setUser(null);
+      } finally {
+        setFetching(false);
+      }
+    })();
+  }, [isBarber, loading]);
+
+
+
+
+  if (loading || fetching || !user) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+        <Text>Cargando perfil…</Text>
+      </View>
+    );
+  }
+
+  const initials = getInitials(user.firstName, user.lastName);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -30,23 +100,23 @@ export default function Perfil() {
           </View>
 
           <Text style={styles.name}>
-            {MOCK_USER.firstName} {MOCK_USER.lastName}
+            {user.firstName} {user.lastName}
           </Text>
-          <Text style={styles.role}>{MOCK_USER.role}</Text>
+          <Text style={styles.role}>{user.role}</Text>
 
           <View style={styles.infoRow}>
             <Ionicons name="mail-outline" size={22} color={COLORS.textMuted} />
-            <Text style={styles.infoText}>{MOCK_USER.email}</Text>
+            <Text style={styles.infoText}>{user.email}</Text>
           </View>
 
           <View style={styles.infoRow}>
             <Ionicons name="call-outline" size={22} color={COLORS.textMuted} />
-            <Text style={styles.infoText}>{MOCK_USER.phone}</Text>
+            <Text style={styles.infoText}>{user.phone || "-"}</Text>
           </View>
 
           <View style={styles.infoRow}>
             <Ionicons name="location-outline" size={22} color={COLORS.textMuted} />
-            <Text style={styles.infoText}>{MOCK_USER.address}</Text>
+            <Text style={styles.infoText}>{user.address || "-"}</Text>
           </View>
         </View>
 
@@ -61,7 +131,6 @@ export default function Perfil() {
     </SafeAreaView>
   );
 }
-
 
 function getInitials(first: string, last: string) {
   const f = (first || "").trim().charAt(0).toUpperCase();
@@ -78,82 +147,30 @@ const COLORS = {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.bg,
-  },
+  container: { flex: 1, backgroundColor: COLORS.bg },
   header: {
-    fontSize: 26, // más grande
-    fontWeight: "800",
-    color: COLORS.text,
-    marginTop: 20,
-    marginBottom: 24,
-    marginHorizontal: 16, // alineado con tarjeta/botón
+    fontSize: 26, fontWeight: "800", color: COLORS.text,
+    marginTop: 20, marginBottom: 24, marginHorizontal: 16,
   },
   profileCard: {
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    paddingVertical: 32, // más espacio interno
-    paddingHorizontal: 20,
-    marginHorizontal: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-    marginBottom: 32,
+    alignItems: "center", backgroundColor: "#FFFFFF", borderRadius: 20,
+    paddingVertical: 32, paddingHorizontal: 20, marginHorizontal: 16,
+    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 }, elevation: 3, marginBottom: 32,
   },
   avatar: {
-    width: 100, // más grande
-    height: 100,
-    borderRadius: 999,
-    backgroundColor: "#E9FCEB",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
+    width: 100, height: 100, borderRadius: 999, backgroundColor: "#E9FCEB",
+    alignItems: "center", justifyContent: "center", marginBottom: 20,
   },
-  avatarText: {
-    fontSize: 40, // iniciales grandes
-    fontWeight: "800",
-    color: COLORS.accent,
-  },
-  name: {
-    fontSize: 22, // más grande
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 6,
-  },
-  role: {
-    fontSize: 16,
-    color: COLORS.textMuted,
-    marginBottom: 20,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 14,
-  },
-  infoText: {
-    fontSize: 16, // más grande
-    color: COLORS.text,
-    flexShrink: 1,
-  },
+  avatarText: { fontSize: 40, fontWeight: "800", color: COLORS.accent },
+  name: { fontSize: 22, fontWeight: "700", color: COLORS.text, marginBottom: 6 },
+  role: { fontSize: 16, color: COLORS.textMuted, marginBottom: 20 },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14 },
+  infoText: { fontSize: 16, color: COLORS.text, flexShrink: 1 },
   logoutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.brand,
-    borderRadius: 14,
-    paddingVertical: 16,
-    gap: 10,
-    marginHorizontal: 16,
-    marginBottom: 32,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    backgroundColor: COLORS.brand, borderRadius: 14, paddingVertical: 16,
+    gap: 10, marginHorizontal: 16, marginBottom: 32,
   },
-  logoutText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 18, // más grande
-  },
+  logoutText: { color: "#FFFFFF", fontWeight: "700", fontSize: 18 },
 });
