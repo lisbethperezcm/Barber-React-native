@@ -1,5 +1,6 @@
 // app/(tabs)/Notificaciones.tsx
 
+import { useNotifications, type Notification } from "@/assets/src/features/notification/useNotifications";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -12,26 +13,6 @@ import {
   View,
 } from "react-native";
 
-/*
-import { useNotifications } from "@/assets/src/features/notification/useNotifications"; // ajusta la ruta si no usas alias "@"
-import { useEffect } from "react";
-
-export default function DebugNotifications() {
-  const { data, isLoading, error } = useNotifications();
-
-  useEffect(() => {
-    if (isLoading) console.log("🔔 Cargando notificaciones…");
-    if (error) console.log("❌ Error notificaciones:", error);
-  }, [isLoading, error]);
-
-  useEffect(() => {
-    if (data) console.log("✅ Notificaciones:", JSON.stringify(data, null, 2));
-  }, [data]);
-
-  return null; // componente solo para logs
-}*/
-
-
 type NotificationType =
   | "new_appointment"
   | "reminder"
@@ -39,96 +20,47 @@ type NotificationType =
   | "payment"
   | "review";
 
-type AppNotification = {
-  id: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  timeAgo: string; // ej: "Hace 5 min"
-  unread?: boolean;
-};
-
-const MOCK_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: "1",
-    type: "new_appointment",
-    title: "Nueva cita agendada",
-    message: "Carlos Mendoza agendó una cita para mañana a las 10:00 AM",
-    timeAgo: "Hace 5 min",
-    unread: true,
-  },
-  {
-    id: "2",
-    type: "reminder",
-    title: "Recordatorio de cita",
-    message: "Miguel Torres tiene cita en 30 minutos - Corte clásico",
-    timeAgo: "Hace 10 min",
-    unread: true,
-  },
-  {
-    id: "3",
-    type: "canceled",
-    title: "Cita cancelada",
-    message: "Roberto Silva canceló su cita de las 3:00 PM",
-    timeAgo: "Hace 1 hora",
-  },
-  {
-    id: "4",
-    type: "payment",
-    title: "Pago recibido",
-    message: "Juan Pérez completó el pago de $750 por corte y barba",
-    timeAgo: "Hace 2 horas",
-  },
-  {
-    id: "5",
-    type: "review",
-    title: "Nueva reseña",
-    message: "María Ruiz dejó una reseña 5★ por su servicio",
-    timeAgo: "Hace 3 horas",
-  },
-];
+function getTimeAgo(dateString: string): string {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "Hace un momento";
+  if (diffMin < 60) return `Hace ${diffMin} min`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `Hace ${diffHr} hora${diffHr > 1 ? "s" : ""}`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `Hace ${diffDay} día${diffDay > 1 ? "s" : ""}`;
+}
 
 export default function Notificaciones() {
   const router = useRouter();
-  const [items, setItems] = React.useState<AppNotification[]>(
-    MOCK_NOTIFICATIONS
-  );
+  const { data: items = [], isLoading, error } = useNotifications();
 
-  const markAsRead = (id: string) => {
-    setItems((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, unread: false } : n))
-    );
-  };
-
-  const renderItem = ({ item }: { item: AppNotification }) => (
+  const renderItem = ({ item }: { item: Notification }) => (
     <TouchableOpacity
       activeOpacity={0.9}
-      onPress={() => markAsRead(item.id)}
+      // Aquí podrías llamar a una función para marcar como leído en el backend si lo necesitas
       style={styles.card}
     >
-      {/* Icono por tipo */}
-      <View style={[styles.iconWrap, getIconBg(item.type)]}>
+      <View style={[styles.iconWrap, getIconBg(item.type as NotificationType)]}>
         <Ionicons
-          name={getIconName(item.type)}
+          name={getIconName(item.type as NotificationType)}
           size={18}
-          color={getIconColor(item.type)}
+          color={getIconColor(item.type as NotificationType)}
         />
       </View>
-
-      {/* Contenido */}
       <View style={styles.cardBody}>
         <View style={styles.titleRow}>
           <Text style={styles.cardTitle} numberOfLines={1}>
             {item.title}
           </Text>
-          {item.unread ? <View style={styles.unreadDot} /> : null}
+          {item.read_at === null ? <View style={styles.unreadDot} /> : null}
         </View>
-
         <Text style={styles.cardMessage} numberOfLines={2}>
-          {item.message}
+          {item.body}
         </Text>
-
-        <Text style={styles.cardTime}>{item.timeAgo}</Text>
+        <Text style={styles.cardTime}>{getTimeAgo(item.created_at)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -136,7 +68,6 @@ export default function Notificaciones() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.sheet}>
-        {/* Header */}
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Notificaciones</Text>
           <TouchableOpacity
@@ -146,7 +77,6 @@ export default function Notificaciones() {
             <Ionicons name="close" size={22} color={COLORS.text} />
           </TouchableOpacity>
         </View>
-
         <FlatList
           data={items}
           keyExtractor={(i) => i.id}
@@ -158,7 +88,6 @@ export default function Notificaciones() {
     </SafeAreaView>
   );
 }
-
 //Helpers visuales 
 function getIconName(type: NotificationType): keyof typeof Ionicons.glyphMap {
   switch (type) {
