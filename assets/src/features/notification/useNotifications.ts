@@ -8,6 +8,7 @@ type ApiNotification = {
   data?: {
     title?: string;
     body?: string;
+    type?: string;
   };
   read_at: string | null;
   created_at: string;
@@ -17,6 +18,7 @@ export type Notification = {
   id: string;
   title: string;
   body: string;
+  type: string | null;
   read_at: string | null;
   created_at: string;
 };
@@ -35,6 +37,7 @@ export function useNotifications() {
       return list.map((n) => ({
         id: n.id,
         title: n.data?.title ?? "",
+        type: n.data?.type ?? null,
         body: n.data?.body ?? "",
         read_at: n.read_at ?? null,
         created_at: n.created_at ?? "",
