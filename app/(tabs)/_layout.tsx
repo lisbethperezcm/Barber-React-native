@@ -10,23 +10,60 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [checking, setChecking] = useState(true);
+  const [isBarber, setIsBarber] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const token = await SecureStore.getItemAsync("accessToken");
         if (!token) {
-          // Si no hay token, envía al login
           router.replace("/login");
           return;
         }
+
+        // Lecturas tolerantes
+        const role = (await SecureStore.getItemAsync("role")) || "";
+        const roleId = (await SecureStore.getItemAsync("role_id")) || "";
+        const isBarberFlag = (await SecureStore.getItemAsync("isBarber")) || "";
+        const userJson = (await SecureStore.getItemAsync("user")) || "";
+
+        let roleFromUser = "";
+        try {
+          const u = userJson ? JSON.parse(userJson) : null;
+          // soporta user.role.name o user.roles[0].name
+          roleFromUser =
+            (u?.role?.name as string) ||
+            (Array.isArray(u?.roles) && u.roles[0]?.name) ||
+            (u?.role as string) ||
+            "";
+        } catch {
+          // ignore
+        }
+
+        const normalized = (s: string) => (s || "").toString().trim().toLowerCase();
+
+        const barber =
+          ["barber", "barbero"].includes(normalized(role)) ||
+          ["barber", "barbero"].includes(normalized(roleFromUser)) ||
+          roleId === "2" ||
+          normalized(isBarberFlag) === "true";
+
+        // Debug rápido (puedes quitarlo luego)
+        console.log({
+          role,
+          roleId,
+          isBarberFlag,
+          roleFromUser,
+          resolvedIsBarber: barber,
+        });
+
+        setIsBarber(!!barber);
       } finally {
         setChecking(false);
       }
     })();
   }, []);
 
-  // Loader mientras verificamos el token
   if (checking) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -40,7 +77,7 @@ export default function TabsLayout() {
       {/* Header fijo */}
       <Header notifications={3} />
 
-      {/* Tabs visibles solo si hay token */}
+      {/* Tabs */}
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -65,6 +102,17 @@ export default function TabsLayout() {
           name="citas"
           options={{ title: "Citas", tabBarIcon: (p) => <Calendar {...p} /> }}
         />
+
+        {/* HORARIOS: un solo Screen; se oculta con href:null si no es barbero */}
+        <Tabs.Screen
+          name="horarios"  // <-- debe existir app/(tabs)/horarios.tsx
+          options={{
+            title: "Horarios",
+            tabBarIcon: (p) => <Calendar {...p} />,
+            href: isBarber ? "/(tabs)/horarios" : null,
+          }}
+        />
+
         <Tabs.Screen
           name="barberos"
           options={{ title: "Barberos", tabBarIcon: (p) => <Users {...p} /> }}
@@ -73,9 +121,10 @@ export default function TabsLayout() {
           name="perfil"
           options={{ title: "Perfil", tabBarIcon: (p) => <User {...p} /> }}
         />
+
         {/* Ocultar pestañas sobrantes */}
         <Tabs.Screen name="explore" options={{ href: null }} />
-     
+        <Tabs.Screen name="two" options={{ href: null }} />
         <Tabs.Screen name="booking/new" options={{ href: null }} />
         <Tabs.Screen name="servicios" options={{ href: null }} />
         <Tabs.Screen name="notificaciones" options={{ href: null }} />
