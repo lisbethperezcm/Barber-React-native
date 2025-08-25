@@ -115,7 +115,9 @@ export default function TabsLayout() {
 
         <Tabs.Screen
           name="barberos"
-          options={{ title: "Barberos", tabBarIcon: (p) => <Users {...p} /> }}
+          options={{ title: "Barberos", tabBarIcon: (p) => <Users {...p} />,
+          href: isBarber ? null : "/(tabs)/barberos",
+        }}
         />
         <Tabs.Screen
           name="perfil"
@@ -128,6 +130,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="booking/new" options={{ href: null }} />
         <Tabs.Screen name="servicios" options={{ href: null }} />
         <Tabs.Screen name="notificaciones" options={{ href: null }} />
+        <Tabs.Screen name="despachos" options={{ href: null }} />
       </Tabs>
     </View>
   );
