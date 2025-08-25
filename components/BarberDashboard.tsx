@@ -20,7 +20,7 @@ console.log("UserName in BarberDashboard:", userFirstName);
       <View style={s.helloRow}>
         <View style={s.avatar}><Text style={s.avatarTxt}>JC</Text></View>
         <View>
-          <Text style={s.hello}>Hola,{userFirstName} 👋</Text>
+          <Text style={s.hello}>Hola, {userFirstName} 👋</Text>
           <Text style={s.sub}>¿Listo para atender a tus clientes?</Text>
         </View>
       </View>
@@ -59,8 +59,14 @@ console.log("UserName in BarberDashboard:", userFirstName);
       </Pressable>
 
       {/* Acceso Rápido */}
+      {/* NUEVO: Despachos */}
+      
       <Text style={s.sectionTitle}>Acceso Rápido</Text>
       <View style={s.quickRow}>
+      <Pressable style={s.quickItem} onPress={() => router.push("/(tabs)/despachos")}>
+          <View style={s.quickIcon}><Text>📦</Text></View>
+          <Text style={s.quickText}>Despachos</Text>
+        </Pressable>
         <Pressable style={s.quickItem} onPress={() => router.push("/(tabs)/servicios")}>
           <View style={s.quickIcon}><Text>💈</Text></View>
           <Text style={s.quickText}>Servicios</Text>

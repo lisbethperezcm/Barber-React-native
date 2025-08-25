@@ -8,6 +8,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import AssistantChat from "../../components/AssistantChat";
 
 
+
 const COLORS = {
   bg: "#ffffff",
   text: "#111827",          // gray-900
@@ -43,6 +44,9 @@ if (!role) {
     return (
       <View style={styles.screen}>
         <StatusBar style="dark" />
+
+   
+
      
       {isBarber ? <BarberDashboard styles={styles} /> : <ClientDashboard styles={styles} />}
       

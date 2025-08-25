@@ -53,7 +53,7 @@ export default function Notificaciones() {
       <View style={styles.cardBody}>
         <View style={styles.titleRow}>
           <Text style={styles.cardTitle} numberOfLines={1}>
-            {item.title}
+            {item.title} 
           </Text>
           {item.read_at === null ? <View style={styles.unreadDot} /> : null}
         </View>
