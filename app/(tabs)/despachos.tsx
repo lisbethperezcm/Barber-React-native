@@ -1,12 +1,14 @@
 // app/(tabs)/despachos.tsx
+import { Link } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-    FlatList,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  FlatList,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 type Product = {
@@ -18,7 +20,7 @@ type Product = {
 
 type DispatchItem = {
   id: number;
-  barber_name?: string; // no se muestra
+  barber_name?: string; // no se muestra en la UI
   dispatch_date: string; // YYYY-MM-DD
   status: "Sin estado" | "Entregado" | "Devuelto" | "Pagado";
   products: Product[];
@@ -42,7 +44,7 @@ const initialData: DispatchItem[] = [
   {
     id: 1,
     barber_name: "Darling Perez",
-    dispatch_date: "2025-04-03",
+    dispatch_date: "2025-04-02",
     status: "Entregado",
     products: [
       { product_name: "Aceite para Barba Premium", quantity: 2, unit_cost: "160.00", subtotal: "320.00" },
@@ -53,15 +55,17 @@ const initialData: DispatchItem[] = [
   {
     id: 2,
     barber_name: "Carlos Mendoza",
-    dispatch_date: "2025-04-01",
+    dispatch_date: "2025-03-31",
     status: "Pagado",
-    products: [{ product_name: "Shampoo Mentolado", quantity: 5, unit_cost: "100.00", subtotal: "500.00" }],
+    products: [
+      { product_name: "Shampoo Mentolado", quantity: 5, unit_cost: "100.00", subtotal: "500.00" },
+    ],
     total: "500.00",
   },
   {
     id: 3,
     barber_name: "Ana Ruiz",
-    dispatch_date: "2025-04-02",
+    dispatch_date: "2025-04-01",
     status: "Sin estado",
     products: [{ product_name: "Cera Mate", quantity: 4, unit_cost: "162.50", subtotal: "650.00" }],
     total: "650.00",
@@ -70,8 +74,7 @@ const initialData: DispatchItem[] = [
 
 function formatCurrency(n: string | number) {
   const num = typeof n === "string" ? Number(n) : n;
-  if (Number.isNaN(num)) return "$0.00";
-  return `$${num.toFixed(2)}`;
+  return Number.isNaN(num) ? "$0.00" : `$${num.toFixed(2)}`;
 }
 
 function statusStyle(s: DispatchItem["status"]) {
@@ -87,8 +90,7 @@ function statusStyle(s: DispatchItem["status"]) {
   }
 }
 
-export default function DespachosScreen() {
-  // Estado solo para mostrar datos (read-only ahora)
+export default function Despachos() {
   const [data] = useState<DispatchItem[]>(initialData);
 
   const kpis = useMemo(() => {
@@ -104,12 +106,13 @@ export default function DespachosScreen() {
 
     return (
       <View style={styles.card}>
-        {/* Encabezado (sin nombre de barbero) */}
         <View style={styles.headerRow}>
+          {/* Avatar */}
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>D{item.id}</Text>
           </View>
 
+          {/* Centro: título, fecha y botón Ver detalle (debajo del título) */}
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>Despacho #{item.id}</Text>
             <Text style={styles.cardSub}>
@@ -119,9 +122,22 @@ export default function DespachosScreen() {
                 year: "numeric",
               })}
             </Text>
+
+            <Link
+              href={{
+                pathname: "/despachos/[id]",
+                params: { id: String(item.id), data: JSON.stringify(item) },
+              }}
+              replace={false}
+              asChild
+            >
+              <Pressable style={styles.detailBtnInline}>
+                <Text style={styles.detailBtnInlineText}>Ver detalle</Text>
+              </Pressable>
+            </Link>
           </View>
 
-          {/* Chip de estado y total (con label) */}
+          {/* Derecha: estado + total */}
           <View style={{ alignItems: "flex-end", gap: 6 }}>
             <View style={[styles.badge, { backgroundColor: st.bg, borderColor: st.border }]}>
               <Text style={[styles.badgeText, { color: st.text }]} numberOfLines={1}>
@@ -132,26 +148,6 @@ export default function DespachosScreen() {
             <Text style={styles.totalText}>{formatCurrency(item.total)}</Text>
           </View>
         </View>
-
-        {/* Productos */}
-        <View style={{ marginTop: 8 }}>
-          <Text style={styles.sectionLabel}>Productos:</Text>
-          {item.products.map((p, idx) => (
-            <View key={`${item.id}-${idx}`} style={styles.productRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.productName} numberOfLines={1}>
-                  {p.product_name}
-                </Text>
-                <Text style={styles.productMeta}>
-                  Cantidad: {p.quantity} × {formatCurrency(p.unit_cost)}
-                </Text>
-              </View>
-              <Text style={styles.productPrice}>{formatCurrency(p.subtotal)}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* (Se eliminaron los botones de acciones para cambiar de estado) */}
       </View>
     );
   };
@@ -183,7 +179,7 @@ export default function DespachosScreen() {
             </View>
           </View>
 
-          {/* Lista */}
+          {/* Lista de despachos (sin productos) */}
           <FlatList
             data={data}
             keyExtractor={(it) => String(it.id)}
@@ -228,6 +224,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   headerRow: { flexDirection: "row", alignItems: "center" },
+
   avatar: {
     width: 42,
     height: 42,
@@ -238,9 +235,11 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   avatarText: { color: COLORS.white, fontWeight: "800" },
+
   cardTitle: { color: COLORS.text, fontWeight: "800", fontSize: 16 },
   cardSub: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
 
+  // Chip de estado
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -255,19 +254,23 @@ const styles = StyleSheet.create({
   totalLabel: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
   totalText: { color: COLORS.text, fontWeight: "800" },
 
-  sectionLabel: { color: COLORS.text, fontWeight: "700", marginTop: 12, marginBottom: 8 },
-  productRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 8,
+  // Botón "Ver detalle" (debajo del título)
+  detailBtnInline: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
   },
-  productName: { color: COLORS.text, fontWeight: "700", marginBottom: 2 },
-  productMeta: { color: COLORS.muted, fontSize: 12 },
-  productPrice: { color: COLORS.text, fontWeight: "800", marginLeft: 10 },
+  detailBtnInlineText: {
+    color: COLORS.text,
+    fontWeight: "700",
+  },
 
+  // Empty state
   empty: {
     backgroundColor: COLORS.card,
     borderRadius: 16,
