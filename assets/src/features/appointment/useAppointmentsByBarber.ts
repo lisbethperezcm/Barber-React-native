@@ -66,24 +66,28 @@ function normalize(a: ApiAppointment): Appointment {
   };
 }
 
-export function useAppointments() {
+
+export function useAppointmentsByBarber(opts: { enabled?: boolean } = {}) {
+      const { enabled = false } = opts;
+
   return useQuery({
     queryKey: ["appointments", "all"],
     queryFn: async (): Promise<Appointment[]> => {
       const token = await SecureStore.getItemAsync("accessToken");
-      const client = await SecureStore.getItemAsync("client");
+      const barber = await SecureStore.getItemAsync("barber");
     //  console.log("🔎 Request GET /clients/appointments", client);
 
-      const clientParsed = client ? JSON.parse(client) : null;
+      const barberParsed = barber ? JSON.parse(barber) : null;
       if (!token) return [];
-      console.log(client);
+      console.log(barber);
 
-      const { data } = await api.get<{ data: ApiAppointment[] }>("/clients-appointments", {
-        params: clientParsed ? { client_id: clientParsed } : undefined,
+      const { data } = await api.get<{ data: ApiAppointment[] }>("/barbers-appointments", {
+        params: barberParsed ? { barber_id: barberParsed } : undefined,
       });
       const list = data?.data ?? [];
       return list.map(normalize);
     },
     staleTime: 60_000,
+    enabled
   });
 }
