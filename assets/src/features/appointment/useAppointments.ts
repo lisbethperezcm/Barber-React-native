@@ -1,5 +1,7 @@
 // hooks/useAppointments.ts
 import { useQuery } from "@tanstack/react-query";
+
+
 import * as SecureStore from "expo-secure-store";
 import { api } from "../../lib/api";
 
@@ -87,3 +89,5 @@ export function useAppointments() {
     staleTime: 60_000,
   });
 }
+
+
