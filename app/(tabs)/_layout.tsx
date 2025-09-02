@@ -115,14 +115,16 @@ export default function TabsLayout() {
 
         <Tabs.Screen
           name="barberos"
-          options={{ title: "Barberos", tabBarIcon: (p) => <Users {...p} />,
-          href: isBarber ? null : "/(tabs)/barberos",
-        }}
+          options={{
+            title: "Barberos", tabBarIcon: (p) => <Users {...p} />,
+            href: isBarber ? null : "/(tabs)/barberos",
+          }}
         />
         <Tabs.Screen
           name="perfil"
           options={{ title: "Perfil", tabBarIcon: (p) => <User {...p} /> }}
         />
+        
 
         {/* Ocultar pestañas sobrantes */}
         <Tabs.Screen name="explore" options={{ href: null }} />
@@ -130,7 +132,10 @@ export default function TabsLayout() {
         <Tabs.Screen name="booking/new" options={{ href: null }} />
         <Tabs.Screen name="servicios" options={{ href: null }} />
         <Tabs.Screen name="notificaciones" options={{ href: null }} />
-        <Tabs.Screen name="despachos" options={{ href: null }} />
+       
+        <Tabs.Screen name="despachos" options={{ href: null, headerShown: false }} />
+        <Tabs.Screen name="despachos/[id]" options={{ href: null, headerShown: false }} />
+
       </Tabs>
     </View>
   );
