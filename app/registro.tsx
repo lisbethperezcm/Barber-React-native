@@ -1,5 +1,5 @@
 // app/(auth)/register.tsx
-import { Stack, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
     KeyboardAvoidingView,
@@ -39,9 +39,9 @@ export default function RegisterScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Formulario de Registro", headerShown: true, headerBackVisible: false }} />
+      
       <KeyboardAvoidingView
-        behavior={Platform.select({ ios: "padding", android: undefined })}
+        behavior={Platform.select({ ios: "padding", android: "padding"})}
         style={{ flex: 1, backgroundColor: COLORS.bg }}
       >
         <ScrollView

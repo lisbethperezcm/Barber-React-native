@@ -1,17 +1,20 @@
 import { useBarberSchedules } from "@/assets/src/features/barber/useBarberSchedule";
 import { api } from "@/assets/src/lib/api";
 import axios from "axios";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-    Modal,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    View,
+  ActivityIndicator,
+  LayoutAnimation,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  UIManager,
+  View,
 } from "react-native";
 
 const COLORS = {
@@ -23,41 +26,112 @@ const COLORS = {
   overlay: "rgba(0,0,0,0.4)",
   white: "#FFFFFF",
   red: "#DC2626",
+  redDark: "#991B1B",
+  redSoft: "#FEE2E2",
+  redSoftBorder: "#FCA5A5",
   green: "#16A34A",
   greenSoft: "#DCFCE7",
   gray: "#9CA3AF",
   graySoft: "#F3F4F6",
 };
 
+type Row = {
+  id: number;
+  statusId: number;   // 1 activo, 2 inactivo
+  dayName: string;
+  startTime: string;
+  endTime: string;
+};
+
 export default function HorariosScreen() {
-  const { data: schedules = [], isLoading } = useBarberSchedules();
+  const { data = [], isLoading, refetch } = useBarberSchedules() as {
+    data: Row[];
+    isLoading: boolean;
+    refetch: () => Promise<any>;
+  };
+
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [dayToToggle, setDayToToggle] = useState<number | null>(null);
 
- const toggleDay = async (id: number) => {
-  try {
-    const { data, status } = await api.post(`/schedules/toggle-status`, { id });
+  // Loader por fila
+  const [rowLoading, setRowLoading] = useState<number | null>(null);
 
-    if (status === 200) {
-      console.log("[toggleDay][success]:", data);
-      // ✅ Refrescar la lista automáticamente
-      // si usas react-query, puedes invalidar el query:
-    //  queryClient.invalidateQueries({ queryKey: ["schedules", "barber"] });
+  // UI optimista por fila (id -> active?)
+  const [optimistic, setOptimistic] = useState<Record<number, boolean>>({});
+
+  // Popup de error
+  const [errorVisible, setErrorVisible] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      UIManager.setLayoutAnimationEnabledExperimental?.(true);
     }
-  } catch (e) {
-    if (axios.isAxiosError(e)) {
-      const msg =
-        (e.response?.data as any)?.message ?? "No se pudo actualizar el estado del día.";
-      console.error("[toggleDay][error]:", msg);
+  }, []);
+
+  const rows: Row[] = useMemo(() => data ?? [], [data]);
+
+  const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+  const toggleDay = async (id: number, nextActive?: boolean) => {
+    const MIN_SPINNER_MS = 350;
+
+    setRowLoading(id);
+    if (typeof nextActive === "boolean") {
+      // UI optimista inmediata
+      setOptimistic((prev) => ({ ...prev, [id]: nextActive }));
+    }
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    try {
+      const started = Date.now();
+      const { data, status } = await api.post(`/schedules/toggle-status`, { id });
+
+      if (status === 200) {
+        console.log("[toggleDay][success]:", data);
+        await refetch(); // Trae estado real del server
+      }
+
+      const elapsed = Date.now() - started;
+      if (elapsed < MIN_SPINNER_MS) await wait(MIN_SPINNER_MS - elapsed);
+    } catch (e) {
+      // Revertir optimista si falla
+      setOptimistic((prev) => {
+        const clone = { ...prev };
+        delete clone[id];
+        return clone;
+      });
+
+      let msg = "No se pudo actualizar el estado del día.";
+      if (axios.isAxiosError(e)) {
+        msg = (e.response?.data as any)?.message || msg;
+      }
+      //console.error("[toggleDay][error]:", msg);
+
+      // 👉 Mostrar popup rojo claro con el mensaje
+      setErrorMsg(msg);
+      setErrorVisible(true);
+    } finally {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setRowLoading(null);
+      // Limpia override optimista (si refetch ya sincronizó, no hace falta mantenerlo)
+      setOptimistic((prev) => {
+        const clone = { ...prev };
+        delete clone[id];
+        return clone;
+      });
+    }
+  };
+
+  const handleTogglePress = (row: Row, active: boolean) => {
+    if (active) {
+      // activo → inactivo requiere confirmación
+      setDayToToggle(row.id);
+      setConfirmVisible(true);
     } else {
-      console.error("[toggleDay][network]:", e);
+      // inactivo → activo: optimista inmediato
+      toggleDay(row.id, true);
     }
-  }
-};
-
-  console.log("Current schedules:", schedules);
-  const handleTogglePress = (id: number, active: boolean) => {
-    active ? (setDayToToggle(id), setConfirmVisible(true)) : toggleDay(id);
   };
 
   return (
@@ -74,12 +148,18 @@ export default function HorariosScreen() {
             showsVerticalScrollIndicator
           >
             <View style={styles.card}>
-              {schedules.map((row) => {
-                const active = row.statusId === 1;
+              {rows.map((row) => {
+                const serverActive = row.statusId === 1;
+                const active = optimistic[row.id] ?? serverActive;
+                const isRowLoading = rowLoading === row.id;
                 const hours = active ? `${row.startTime} - ${row.endTime}` : "Cerrado";
 
                 return (
-                  <View key={row.id} style={styles.row}>
+                  <View
+                    key={row.id}
+                    style={[styles.row, isRowLoading && { opacity: 0.7 }]}
+                    pointerEvents={isRowLoading ? "none" : "auto"}
+                  >
                     {/* IZQUIERDA */}
                     <View style={styles.left}>
                       <View
@@ -128,13 +208,20 @@ export default function HorariosScreen() {
                         </Text>
                       </View>
 
-                      <Switch
-                        value={active}
-                        onValueChange={() => handleTogglePress(row.id, active)}
-                        trackColor={{ false: "#D1D5DB", true: "#111827" }}
-                        thumbColor="#FFFFFF"
-                        ios_backgroundColor="#D1D5DB"
-                      />
+                      {isRowLoading ? (
+                        <View style={styles.loaderBox}>
+                          <ActivityIndicator />
+                        </View>
+                      ) : (
+                        <Switch
+                          value={active}
+                          onValueChange={() => handleTogglePress(row, active)}
+                          disabled={isRowLoading}
+                          trackColor={{ false: "#D1D5DB", true: "#111827" }}
+                          thumbColor="#FFFFFF"
+                          ios_backgroundColor="#D1D5DB"
+                        />
+                      )}
                     </View>
                   </View>
                 );
@@ -144,7 +231,7 @@ export default function HorariosScreen() {
         )}
       </View>
 
-      {/* Modal confirmación */}
+      {/* Modal confirmación (activo → inactivo) */}
       <Modal
         transparent
         visible={confirmVisible}
@@ -169,8 +256,10 @@ export default function HorariosScreen() {
               </Pressable>
               <Pressable
                 style={styles.dangerBtn}
-                onPress={() => {
-                  if (dayToToggle !== null) toggleDay(dayToToggle);
+                onPress={async () => {
+                  if (dayToToggle !== null) {
+                    await toggleDay(dayToToggle, false);
+                  }
                   setConfirmVisible(false);
                   setDayToToggle(null);
                 }}
@@ -178,6 +267,36 @@ export default function HorariosScreen() {
                 <Text style={styles.dangerBtnText}>Sí</Text>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 🔴 Popup de error rojo claro con botón OK */}
+      <Modal
+        transparent
+        visible={errorVisible}
+        animationType="fade"
+        onRequestClose={() => setErrorVisible(false)}
+      >
+        <View style={styles.backdrop}>
+          <View style={styles.errorCard}>
+            <View style={styles.errorHeader}>
+              <Text style={styles.errorTitle}>No se pudo realizar la acción</Text>
+            </View>
+            <Text style={styles.errorMsg}>
+              {errorMsg ??
+                "Ha ocurrido un error al actualizar el estado del horario. Intenta de nuevo."}
+            </Text>
+
+            <Pressable
+              style={styles.errorOkBtn}
+              onPress={() => {
+                setErrorVisible(false);
+                setErrorMsg(null);
+              }}
+            >
+              <Text style={styles.errorOkText}>OK</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -244,6 +363,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
+  loaderBox: {
+    width: 52,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   backdrop: {
     flex: 1,
     backgroundColor: COLORS.overlay,
@@ -251,6 +377,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 24,
   },
+
   dialog: {
     width: "100%",
     maxWidth: 420,
@@ -283,4 +410,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dangerBtnText: { color: COLORS.white, fontWeight: "800" },
+
+  // 🔴 Estilos del popup de error
+  errorCard: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: COLORS.redSoft,
+    borderColor: COLORS.redSoftBorder,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+  },
+  errorHeader: {
+    marginBottom: 8,
+  },
+  errorTitle: {
+    color: COLORS.redDark,
+    fontWeight: "800",
+    fontSize: 16,
+    alignSelf: "center",
+  },
+  errorMsg: {
+    color: COLORS.redDark,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 14,
+    textAlign:"center"
+  },
+  errorOkBtn: {
+    alignSelf: "center",
+    backgroundColor: COLORS.red,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  errorOkText: {
+    color: COLORS.white,
+    fontWeight: "800",
+    fontSize: 14,
+  },
 });
