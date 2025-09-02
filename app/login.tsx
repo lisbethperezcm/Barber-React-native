@@ -115,7 +115,7 @@ const LoginScreen = () => {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>¿No tienes una cuenta?</Text>
-            <TouchableOpacity onPress={() => Alert.alert("Registro", "Próximamente")}>
+            <TouchableOpacity onPress={() => router.push("/registro")}>
               <Text style={styles.signUpText}>Regístrate</Text>
             </TouchableOpacity>
           </View>
