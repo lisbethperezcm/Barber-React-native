@@ -2,14 +2,14 @@
 import { Stack, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 const COLORS = {
@@ -39,7 +39,7 @@ export default function RegisterScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Formulario de Registro", headerShown: true, headerBackVisible: false }} />
+      <Stack.Screen options={{ title: "Formulario de Registro", headerShown: false, headerBackVisible: false }} />
       <KeyboardAvoidingView
         behavior={Platform.select({ ios: "padding", android: undefined })}
         style={{ flex: 1, backgroundColor: COLORS.bg }}

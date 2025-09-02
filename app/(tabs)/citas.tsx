@@ -4,9 +4,11 @@ import { useAppointmentsByClient, type Appointment } from "@/assets/src/features
 import { AppointmentCard } from "@/components/AppointmentCard";
 import Loader from "@/components/Loader";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import React, { useContext, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
+  AppState,
   FlatList,
   Modal,
   Platform,
@@ -16,6 +18,7 @@ import {
   TextInput,
   View
 } from "react-native";
+
 type Filter = "all" | "reservadas" | "confirmadas" | "completadas";
 
 const COLORS = {
@@ -28,9 +31,9 @@ const COLORS = {
   chipInactiveBorder: "#E5E7EB",
   brand: "#111827",
   // estados
-  reservado: "#F97316",   // naranja 500
-  confirmado: "#2563EB",  // azul 600
-  completado: "#16A34A",  // verde 600
+  reservado: "#F97316",
+  confirmado: "#2563EB",
+  completado: "#16A34A",
   danger: "#B91C1C",
 };
 
@@ -60,37 +63,50 @@ export default function CitasScreen() {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [actionId, setActionId] = useState<number | null>(null);
-  const { isBarber, role, loading } = useContext(AuthContext);
+  const { isBarber } = useContext(AuthContext);
 
-const clientQ = useAppointmentsByClient({ enabled: !isBarber });
-const barberQ = useAppointmentsByBarber({ enabled: isBarber });
+  const clientQ = useAppointmentsByClient({ enabled: !isBarber });
+  const barberQ = useAppointmentsByBarber({ enabled: isBarber });
 
-const data       = (isBarber ? barberQ.data : clientQ.data) ?? [];
-const isLoading  =  isBarber ? barberQ.isLoading  : clientQ.isLoading;
-const isFetching =  isBarber ? barberQ.isFetching : clientQ.isFetching;
-const error      =  isBarber ? barberQ.error      : clientQ.error;
-const refetch    =  isBarber ? barberQ.refetch    : clientQ.refetch;
+  const data       = (isBarber ? barberQ.data : clientQ.data) ?? [];
+  const isLoading  =  isBarber ? barberQ.isLoading  : clientQ.isLoading;
+  const isFetching =  isBarber ? barberQ.isFetching : clientQ.isFetching;
+  const error      =  isBarber ? barberQ.error      : clientQ.error;
+  const refetch    =  isBarber ? barberQ.refetch    : clientQ.refetch;
 
-const isRefreshing = !isLoading && isFetching;
+  const isRefreshing = !isLoading && isFetching;
 
-console.log(data)
-
-if (error) {
-  console.log("❌ Error useAppointments:", error);
-  // si es axios error, puedes inspeccionar la respuesta
-  if ((error as any).response) {
-    console.log("🔎 Error response data:", (error as any).response.data);
-    console.log("🔎 Error response status:", (error as any).response.status);
+  if (error) {
+    console.log("❌ Error useAppointments:", error);
+    if ((error as any).response) {
+      console.log("🔎 Error response data:", (error as any).response.data);
+      console.log("🔎 Error response status:", (error as any).response.status);
+    }
   }
-}
 
+  // ✅ 1) Refetch al enfocar la pantalla (navegación)
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch, isBarber])
+  );
+
+  // ✅ 2) Refetch al volver al primer plano (foreground)
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        refetch();
+      }
+    });
+    return () => sub.remove();
+  }, [refetch]);
 
   const filtered = useMemo(() => {
     const list = (data ?? []) as Appointment[];
     const q = norm(query);
 
     return list.filter((a) => {
-      const sk = statusKey(a.status); // ← normalizado a "reservada" | "confirmada" | "completada"
+      const sk = statusKey(a.status);
 
       const byStatus =
         filter === "all" ||
@@ -122,7 +138,7 @@ if (error) {
 
             {/* Agendar cita button */}
             <Pressable
-              onPress={() => router.push("/booking/new")}   // 👈 solo este cambio
+              onPress={() => router.push("/booking/new")}
               style={({ pressed }) => ({
                 width: 36,
                 height: 36,
@@ -163,11 +179,11 @@ if (error) {
           />
         </View>
 
-        {/* Chips de filtro: Todas | Reservadas | Confirmadas | Completadas */}
+        {/* Chips de filtro */}
         <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
           {[
             { key: "all" as const, label: "Todas" },
-            { key: "reservadas" as const, label: "Reservadas" },   // ← claves en PLURAL para que coincidan con Filter
+            { key: "reservadas" as const, label: "Reservadas" },
             { key: "confirmadas" as const, label: "Confirmadas" },
             { key: "completadas" as const, label: "Completadas" },
           ].map((opt) => {
@@ -203,8 +219,7 @@ if (error) {
 
       {/* Lista */}
       {isLoading ? (
-
-          <Loader text="Cargando citas..." />
+        <Loader text="Cargando citas..." />
       ) : (
         <FlatList
           data={filtered}
@@ -217,20 +232,19 @@ if (error) {
               <Text style={{ color: COLORS.textMuted }}>No hay citas para mostrar.</Text>
             </View>
           }
+          // ✅ 3) Pull-to-refresh (manual)
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} />}
         />
       )}
 
-      {/* Modal de acciones (kebab) */}
+      {/* Modal de acciones */}
       <Modal visible={actionId !== null} transparent animationType="fade" onRequestClose={() => setActionId(null)}>
         <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.3)" }} onPress={() => setActionId(null)} />
         <View style={{ backgroundColor: "#fff", padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
           <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text, marginBottom: 12 }}>Acciones</Text>
           <View style={{ gap: 8 }}>
             <Pressable
-              onPress={() => {
-                /* TODO: navegar a detalle */ setActionId(null);
-              }}
+              onPress={() => { /* TODO: navegar a detalle */ setActionId(null); }}
               style={({ pressed }) => ({
                 padding: 12,
                 borderRadius: 12,
@@ -240,9 +254,7 @@ if (error) {
               <Text style={{ color: COLORS.text, fontWeight: "700" }}>Ver detalle</Text>
             </Pressable>
             <Pressable
-              onPress={() => {
-                /* TODO: reprogramar */ setActionId(null);
-              }}
+              onPress={() => { /* TODO: reprogramar */ setActionId(null); }}
               style={({ pressed }) => ({
                 padding: 12,
                 borderRadius: 12,
@@ -252,9 +264,7 @@ if (error) {
               <Text style={{ color: COLORS.text, fontWeight: "700" }}>Reprogramar</Text>
             </Pressable>
             <Pressable
-              onPress={() => {
-                /* TODO: cancelar */ setActionId(null);
-              }}
+              onPress={() => { /* TODO: cancelar */ setActionId(null); }}
               style={({ pressed }) => ({
                 padding: 12,
                 borderRadius: 12,
@@ -266,13 +276,6 @@ if (error) {
           </View>
         </View>
       </Modal>
-
-     
     </View>
   );
-
-
-
-
-
 }
