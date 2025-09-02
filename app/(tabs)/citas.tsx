@@ -1,10 +1,11 @@
-import { useAppointments, type Appointment } from "@/assets/src/features/appointment/useAppointments";
+import { AuthContext } from "@/assets/src/context/AuthContext";
+import { useAppointmentsByBarber } from "@/assets/src/features/appointment/useAppointmentsByBarber";
+import { useAppointmentsByClient, type Appointment } from "@/assets/src/features/appointment/useAppointmentsByClient";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import Loader from "@/components/Loader";
-
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import {
   FlatList,
   Modal,
@@ -59,12 +60,21 @@ export default function CitasScreen() {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [actionId, setActionId] = useState<number | null>(null);
+  const { isBarber, role, loading } = useContext(AuthContext);
 
+const clientQ = useAppointmentsByClient({ enabled: !isBarber });
+const barberQ = useAppointmentsByBarber({ enabled: isBarber });
 
-  const { data, isLoading, isFetching, refetch , error} = useAppointments();
-  const isRefreshing = !isLoading && isFetching;
+const data       = (isBarber ? barberQ.data : clientQ.data) ?? [];
+const isLoading  =  isBarber ? barberQ.isLoading  : clientQ.isLoading;
+const isFetching =  isBarber ? barberQ.isFetching : clientQ.isFetching;
+const error      =  isBarber ? barberQ.error      : clientQ.error;
+const refetch    =  isBarber ? barberQ.refetch    : clientQ.refetch;
 
-// 👀 debug
+const isRefreshing = !isLoading && isFetching;
+
+console.log(data)
+
 if (error) {
   console.log("❌ Error useAppointments:", error);
   // si es axios error, puedes inspeccionar la respuesta

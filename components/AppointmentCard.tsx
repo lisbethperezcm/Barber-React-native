@@ -1,4 +1,4 @@
-import { Appointment } from "@/assets/src/features/appointment/useAppointments";
+import { Appointment } from "@/assets/src/features/appointment/useAppointmentsByClient";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";

@@ -68,26 +68,32 @@ function normalize(a: ApiAppointment): Appointment {
   };
 }
 
-export function useAppointments() {
+export function useAppointmentsByClient(opts: { enabled?: boolean } = {}) {
+  const { enabled = false } = opts;
   return useQuery({
     queryKey: ["appointments", "all"],
     queryFn: async (): Promise<Appointment[]> => {
       const token = await SecureStore.getItemAsync("accessToken");
       const client = await SecureStore.getItemAsync("client");
-    //  console.log("🔎 Request GET /clients/appointments", client);
+      //  console.log("🔎 Request GET /clients/appointments", client);
 
       const clientParsed = client ? JSON.parse(client) : null;
-      if (!token) return [];
+     if (!token) return [];
       console.log(client);
 
       const { data } = await api.get<{ data: ApiAppointment[] }>("/clients-appointments", {
         params: clientParsed ? { client_id: clientParsed } : undefined,
       });
       const list = data?.data ?? [];
+     
       return list.map(normalize);
+    
     },
     staleTime: 60_000,
+    enabled,
   });
+
+
 }
 
 
