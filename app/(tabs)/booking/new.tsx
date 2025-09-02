@@ -270,10 +270,13 @@ export default function New() {
       if (isBarber) payload.client_id = selectedClient; // 👈 sin cambios
       else payload.barber_id = selectedBarber;          // 👈 sin cambios
 
-      await createAppointment(payload);
+     
 
-      // UI de éxito
-      setShowSuccess(true);
+      const response = await createAppointment(payload);
+      console.log("[createAppointment][success]:", response.data ?? response);
+       setShowSuccess(true);
+      // feedback / navegación
+      // feedback / navegación
     } catch (e) {
       if (axios.isAxiosError(e)) {
         const status = e.response?.status;

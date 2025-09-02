@@ -57,8 +57,8 @@ export default function Perfil() {
             firstName: payload2?.first_name ?? "",
             lastName: payload2?.last_name ?? "",
             email: payload2?.email ?? "",
-            phone: "",          // no aplica para barbero en tu payload
-            address: "",        // no aplica para barbero en tu payload
+            phone: payload2?.phone_number ?? "",
+            address: payload2?.address ?? "",
             role: "Barbero",
           });
 
