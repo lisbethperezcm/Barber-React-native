@@ -158,7 +158,8 @@ const chosenClient = useMemo(() => clients.find(c => c.id === selectedClient) ||
       if (isBarber) { payload.client_id = selectedClient; }
       else { payload.barber_id = selectedBarber; }
 
-      await createAppointment(payload);
+      const response = await createAppointment(payload);
+      console.log("[createAppointment][success]:", response.data ?? response);
       // feedback / navegación
     } catch (e) {
       if (axios.isAxiosError(e)) {
