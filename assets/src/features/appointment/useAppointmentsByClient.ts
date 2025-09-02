@@ -1,5 +1,7 @@
 // hooks/useAppointments.ts
 import { useQuery } from "@tanstack/react-query";
+
+
 import * as SecureStore from "expo-secure-store";
 import { api } from "../../lib/api";
 
@@ -93,3 +95,5 @@ export function useAppointmentsByClient(opts: { enabled?: boolean } = {}) {
 
 
 }
+
+
