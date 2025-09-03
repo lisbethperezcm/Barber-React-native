@@ -134,7 +134,7 @@ export default function CitasScreen() {
       <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, backgroundColor: COLORS.bg }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View>{/* espacio para notificaciones si lo necesitas */}</View>
+            <View>{/*fffff*/}</View>
 
             {/* Agendar cita button */}
             <Pressable

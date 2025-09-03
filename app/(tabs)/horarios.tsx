@@ -3,15 +3,15 @@ import { api } from "@/assets/src/lib/api";
 import axios from "axios";
 import React, { useState } from "react";
 import {
-    Modal,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    View,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
 } from "react-native";
 
 const COLORS = {

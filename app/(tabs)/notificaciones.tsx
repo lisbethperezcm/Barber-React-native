@@ -1,11 +1,14 @@
 // app/(tabs)/Notificaciones.tsx
 
 import { useNotifications, type Notification } from "@/assets/src/features/notification/useNotifications";
+import Loader from "@/components/Loader";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useCallback } from "react";
 import {
   FlatList,
+  RefreshControl,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -35,7 +38,19 @@ function getTimeAgo(dateString: string): string {
 
 export default function Notificaciones() {
   const router = useRouter();
-  const { data: items = [], isLoading, error } = useNotifications();
+  const { data: items = [], isLoading, error, isFetching, refetch } = useNotifications();
+  const isRefreshing = !isLoading && isFetching;
+
+   // Refetch al enfocar la pantalla
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
+
+  React.useEffect(() => {
+    if (error) console.error("Error al cargar notificaciones:", error);
+  }, [error]);
 
   const renderItem = ({ item }: { item: Notification }) => (
     <TouchableOpacity
@@ -77,14 +92,35 @@ export default function Notificaciones() {
             <Ionicons name="close" size={22} color={COLORS.text} />
           </TouchableOpacity>
         </View>
-        <FlatList
-          data={items}
-          keyExtractor={(i) => i.id}
-          contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-          renderItem={renderItem}
-        />
+      
+
+        {/* Lista */}
+        {isLoading ? (
+          <Loader text="Cargando notificaciones..." />
+        ) : (
+          <FlatList
+            data={items}
+            keyExtractor={(i) => i.id}
+            contentContainerStyle={styles.listContent}
+            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+            renderItem={renderItem}
+            // ✅ Pull-to-refresh
+            refreshControl={
+              <RefreshControl refreshing={isRefreshing} onRefresh={refetch} />
+            }
+            ListEmptyComponent={
+              <View style={{ alignItems: "center", marginTop: 40 }}>
+                <Text style={{ color: COLORS.textMuted }}>
+                  No hay notificaciones para mostrar.
+                </Text>
+              </View>
+            }
+          />
+        )}
       </View>
+
+
+
     </SafeAreaView>
   );
 }
