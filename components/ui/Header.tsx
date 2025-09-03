@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -12,13 +13,13 @@ const COLORS = {
 
 type Props = {
   notifications?: number;
+  // Si tu queryKey real es ["notifications", "all"], cámbialo abajo.
 };
 
-// Icono “flat” estilo fi-rs-bell (trazo simple, fondo transparente)
+// Icono “flat” estilo fi-rs-bell
 function BellRSIcon({ size = 22, color = COLORS.text }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {/* campana */}
       <Path
         d="M15 17h5l-1.4-1.4a2 2 0 01-.6-1.4V11a6 6 0 00-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5"
         stroke={color}
@@ -26,7 +27,6 @@ function BellRSIcon({ size = 22, color = COLORS.text }: { size?: number; color?:
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {/* badajo / sonrisa inferior */}
       <Path
         d="M13.5 21a2 2 0 01-3 0"
         stroke={color}
@@ -39,24 +39,32 @@ function BellRSIcon({ size = 22, color = COLORS.text }: { size?: number; color?:
 }
 
 export default function Header({ notifications = 3 }: Props) {
+  const queryClient = useQueryClient(); // ✅ dentro del componente
   const router = useRouter();
+
+  const handleOpenNotifications = async () => {
+    // ajusta la key si usas ["notifications","all"]
+    const key: (string | number)[] = ["notifications"];
+
+    // Cancela, invalida y fuerza refetch de esa query
+
+   
+
+
+    router.push("/notificaciones");
+     await queryClient.invalidateQueries({ queryKey: key });
+  };
 
   return (
     <View style={styles.header}>
       <Text style={styles.brand}>Vip Stylist</Text>
-      <View>
-        <Pressable
-          style={styles.bellBtn}
-          onPress={() => router.push("/notificaciones")}
-        >
-          {/* 🔔 reemplazado por icono plano estilo fi-rs-bell */}
-          <BellRSIcon size={26} color={COLORS.text} />
 
+      <View>
+        <Pressable style={styles.bellBtn} onPress={handleOpenNotifications}>
+          <BellRSIcon size={26} color={COLORS.text} />
           {notifications > 0 && (
             <View style={styles.badge}>
-              <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>
-                {notifications}
-              </Text>
+              <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>{notifications}</Text>
             </View>
           )}
         </Pressable>
@@ -85,7 +93,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: COLORS.badge, // rojo
+    backgroundColor: COLORS.badge,
     alignItems: "center",
     justifyContent: "center",
   },

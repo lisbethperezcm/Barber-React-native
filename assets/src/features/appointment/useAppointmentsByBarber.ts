@@ -71,7 +71,7 @@ export function useAppointmentsByBarber(opts: { enabled?: boolean } = {}) {
       const { enabled = false } = opts;
 
   return useQuery({
-    queryKey: ["appointments", "all"],
+    queryKey: ["appointments", "byBarber"],
     queryFn: async (): Promise<Appointment[]> => {
       const token = await SecureStore.getItemAsync("accessToken");
       const barber = await SecureStore.getItemAsync("barber");

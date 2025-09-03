@@ -71,7 +71,7 @@ function normalize(a: ApiAppointment): Appointment {
 export function useAppointmentsByClient(opts: { enabled?: boolean } = {}) {
   const { enabled = false } = opts;
   return useQuery({
-    queryKey: ["appointments", "all"],
+    queryKey: ["appointments", "byClient"],
     queryFn: async (): Promise<Appointment[]> => {
       const token = await SecureStore.getItemAsync("accessToken");
       const client = await SecureStore.getItemAsync("client");
