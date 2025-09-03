@@ -20,6 +20,7 @@ import { useBarbers } from "@/assets/src/features/barber/useBarbers";
 import { Client, useClients } from "@/assets/src/features/client/useClients";
 import { useServices } from "@/assets/src/features/service/useServices";
 import Loader from "@/components/Loader";
+import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 // 📅 Calendario UI (no cambia tu lógica de fetch)
@@ -135,6 +136,54 @@ export default function New() {
   const [selectedClient, setSelectedClient] = useState<number | string | null>(null);
   const [qClient, setQClient] = useState("");
   const [selectedBarber, setSelectedBarber] = useState<number | null>(null);
+
+
+  const queryClient = useQueryClient();
+
+
+const handleBackAndRefresh = async () => {
+  const prevStep = Math.max(1, step - 1);
+
+  try {
+   
+    await queryClient.cancelQueries();
+
+   
+    switch (prevStep) {
+      case 1:
+        
+        // Paso 1: Servicios
+        await queryClient.invalidateQueries({ queryKey: ["services"] });
+        break;
+
+      case 2:
+        // Paso 2: depende del rol
+        if (isBarber) {
+          await queryClient.invalidateQueries({ queryKey: ["clients"] });
+        } else {
+          await queryClient.invalidateQueries({ queryKey: ["barbers"] });
+        }
+         await queryClient.invalidateQueries({ queryKey: ["available-slots"] });
+        setSelectedDate(""); 
+        break;
+
+      case 3:
+        // Paso 3: Horarios/slots
+        await queryClient.invalidateQueries({ queryKey: ["available-slots"] });
+        setSelectedDate(""); 
+        break;
+
+
+      default:
+        // Paso 4 (Resumen) o cualquier otro: normalmente no requiere refetch
+        break;
+    }
+
+
+  } catch (e) {
+    console.log("[back-refresh] error:", e);
+  }
+};
 
   // ✅ Popup de éxito
   const [showSuccess, setShowSuccess] = useState(false);
@@ -331,7 +380,8 @@ export default function New() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Agendar cita</Text>
-          <Pressable onPress={() => router.back()} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Cerrar">
+          <Pressable onPress={() => {  router.back(); resetFlow();}} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Cerrar">
+       
             <Text style={{ fontSize: 18, color: COLORS.muted }}>×</Text>
           </Pressable>
         </View>
@@ -697,7 +747,7 @@ export default function New() {
         {/* Footer */}
         <View style={styles.footer}>
           {step > 1 && (
-            <Pressable onPress={() => setStep(step - 1)} style={[styles.btn, styles.btnSecondary]}>
+            <Pressable onPress={() => { setStep(step - 1); handleBackAndRefresh(); }} style={[styles.btn, styles.btnSecondary]}>
               <Text style={[styles.btnText, { color: COLORS.text }]}>Anterior</Text>
             </Pressable>
           )}
