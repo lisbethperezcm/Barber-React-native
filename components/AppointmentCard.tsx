@@ -8,15 +8,17 @@ const COLORS = {
   textMuted: "#6B7280",
   border: "#E5E7EB",
   reserved: "#F97316",   // naranja
-  confirmed: "#2563EB",  // azul
+  progress: "#2563EB",  // azul
   completed: "#16A34A",  // verde
+  cancelled:"#B91C1C", //rojo
 };
 
 function statusColors(status?: string) {
   const s = (status ?? "").toLowerCase();
   if (s === "reservado") return { bg: "#FFF7ED", text: "#F97316", line: COLORS.reserved };      // bg naranja muy claro
-  if (s === "confirmado") return { bg: "#EFF6FF", text: "#2563EB", line: COLORS.confirmed };    // bg azul muy claro
+  if (s === "en proceso") return { bg: "#EFF6FF", text: "#2563EB", line: COLORS.progress };    // bg azul muy claro
   if (s === "completado") return { bg: "#ECFDF5", text: "#16A34A", line: COLORS.completed };    // bg verde muy claro
+  if (s === "cancelado") return { bg: "#FEE2E2", text: "#B91C1C", line: COLORS.cancelled };    // bg rojo claro
   return { bg: "#F3F4F6", text: "#6B7280", line: "#9CA3AF" };
 }
 

@@ -135,6 +135,7 @@ export default function TabsLayout() {
        
         <Tabs.Screen name="despachos" options={{ href: null, headerShown: false }} />
         <Tabs.Screen name="despachos/[id]" options={{ href: null, headerShown: false }} />
+        <Tabs.Screen name="appointments/[id]" options={{ href: null, headerShown: false }} />
 
       </Tabs>
     </View>

@@ -19,7 +19,9 @@ import {
   View
 } from "react-native";
 
-type Filter = "all" | "reservadas" | "confirmadas" | "completadas";
+
+type Filter = "all" | "reservadas" |"en proceso" | "canceladas" | "completadas";
+
 
 const COLORS = {
   bg: "#FFFFFF",
@@ -43,15 +45,15 @@ const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
 // Devuelve la categoría canónica que usan los tabs (en singular)
 const statusKey = (
   raw: unknown
-): "reservada" | "confirmada" | "completada" | "" => {
+): "reservada" | "cancelada" | "completada" |"en proceso" | "" => {
   const s = norm(raw);
 
   // sinónimos / variantes comunes
   if (["reservada", "reservado", "reserved", "reserva", "pendiente", "pending", "booked"].includes(s)) {
     return "reservada";
   }
-  if (["confirmada", "confirmado", "confirmed"].includes(s)) {
-    return "confirmada";
+  if (["cancelada", "cancelado", "cancelled"].includes(s)) {
+    return "cancelada";
   }
   if (["completada", "completado", "completed", "finalizada", "finalizado", "done"].includes(s)) {
     return "completada";
@@ -63,35 +65,53 @@ export default function CitasScreen() {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [actionId, setActionId] = useState<number | null>(null);
-  const { isBarber } = useContext(AuthContext);
+
+  const { isBarber, role, loading } = useContext(AuthContext);
+  const [actionItem, setActionItem] = React.useState<any | null>(null);
+
 
   const clientQ = useAppointmentsByClient({ enabled: !isBarber });
   const barberQ = useAppointmentsByBarber({ enabled: isBarber });
 
-  const data       = (isBarber ? barberQ.data : clientQ.data) ?? [];
-  const isLoading  =  isBarber ? barberQ.isLoading  : clientQ.isLoading;
-  const isFetching =  isBarber ? barberQ.isFetching : clientQ.isFetching;
-  const error      =  isBarber ? barberQ.error      : clientQ.error;
-  const refetch    =  isBarber ? barberQ.refetch    : clientQ.refetch;
+  const data = (isBarber ? barberQ.data : clientQ.data) ?? [];
+  const isLoading = isBarber ? barberQ.isLoading : clientQ.isLoading;
+  const isFetching = isBarber ? barberQ.isFetching : clientQ.isFetching;
+  const error = isBarber ? barberQ.error : clientQ.error;
+  const refetch = isBarber ? barberQ.refetch : clientQ.refetch;
 
   const isRefreshing = !isLoading && isFetching;
 
+  console.log(data)
+  // Navegar al detalle desde el modal
+  const handleViewDetail = () => {
+    if (actionId == null) return;
+    const id = String(actionId);
+    setActionId(null); // cerrar modal primero
+    requestAnimationFrame(() => {
+      // OJO: el path navegable NO incluye el route group (tabs)
+      router.push({ pathname: "/appointments/[id]", params: { id } });
+      // Alternativa: router.push(`/citas/${id}`);
+    });
+  };
+
   if (error) {
     console.log("❌ Error useAppointments:", error);
+    // si es axios error, puedes inspeccionar la respuesta
+
     if ((error as any).response) {
       console.log("🔎 Error response data:", (error as any).response.data);
       console.log("🔎 Error response status:", (error as any).response.status);
     }
   }
 
-  // ✅ 1) Refetch al enfocar la pantalla (navegación)
+  // Refetch al enfocar la pantalla (navegación)
   useFocusEffect(
     useCallback(() => {
       refetch();
     }, [refetch, isBarber])
   );
 
-  // ✅ 2) Refetch al volver al primer plano (foreground)
+  // Refetch al volver al primer plano (foreground)
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") {
@@ -106,12 +126,15 @@ export default function CitasScreen() {
     const q = norm(query);
 
     return list.filter((a) => {
-      const sk = statusKey(a.status);
+
+      const sk = statusKey(a.status); 
+
 
       const byStatus =
         filter === "all" ||
         (filter === "reservadas" && sk === "reservada") ||
-        (filter === "confirmadas" && sk === "confirmada") ||
+        (filter === "canceladas" && sk === "cancelada") ||
+        (filter === "en proceso" && sk === "en proceso") ||
         (filter === "completadas" && sk === "completada");
 
       const byQuery =
@@ -124,9 +147,19 @@ export default function CitasScreen() {
     });
   }, [data, filter, query]);
 
-  const renderItem = ({ item }: { item: Appointment }) => (
+  /*const renderItem = ({ item }: { item: Appointment }) => (
     <AppointmentCard appointment={item} onPressMore={() => setActionId(item.id)} />
+  );*/
+  const renderItem = ({ item }: { item: Appointment }) => (
+    <AppointmentCard
+      appointment={item}
+      onPressMore={() => {
+        setActionId(item.id);     // ya lo tenías
+        setActionItem(item);      // 👈 guarda la cita seleccionada
+      }}
+    />
   );
+
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg, paddingTop: Platform.OS === "android" ? 8 : 0 }}>
@@ -179,13 +212,16 @@ export default function CitasScreen() {
           />
         </View>
 
-        {/* Chips de filtro */}
+
+        {/* Chips de filtro: Todas | Reservadas | canceladas | Completadas */}
         <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
           {[
             { key: "all" as const, label: "Todas" },
-            { key: "reservadas" as const, label: "Reservadas" },
-            { key: "confirmadas" as const, label: "Confirmadas" },
+            { key: "reservadas" as const, label: "Reservadas" },   // ← claves en PLURAL para que coincidan con Filter
+            { key: "canceladas" as const, label: "Canceladas" },
+
             { key: "completadas" as const, label: "Completadas" },
+            { key: "en proceso" as const, label: "En proceso" },
           ].map((opt) => {
             const active = filter === opt.key;
             return (
@@ -219,6 +255,7 @@ export default function CitasScreen() {
 
       {/* Lista */}
       {isLoading ? (
+
         <Loader text="Cargando citas..." />
       ) : (
         <FlatList
@@ -237,14 +274,59 @@ export default function CitasScreen() {
         />
       )}
 
+
       {/* Modal de acciones */}
       <Modal visible={actionId !== null} transparent animationType="fade" onRequestClose={() => setActionId(null)}>
         <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.3)" }} onPress={() => setActionId(null)} />
+
         <View style={{ backgroundColor: "#fff", padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
-          <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text, marginBottom: 12 }}>Acciones</Text>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text, marginBottom: 12 }}>
+            Acciones
+          </Text>
           <View style={{ gap: 8 }}>
             <Pressable
-              onPress={() => { /* TODO: navegar a detalle */ setActionId(null); }}
+
+              onPress={() => {
+                if (actionId == null) return;
+
+                // usa el item guardado; si por algo no está, lo buscamos en 'data'
+                const a: any =
+                  actionItem ??
+                  (Array.isArray(data) ? (data as Appointment[]).find(x => x.id === actionId) : null) ??
+                  {};
+
+                setActionId(null); // cierra el modal primero
+
+                requestAnimationFrame(() => {
+                  router.push({
+                    pathname: "/appointments/[id]",
+                    params: {
+                      id: String(a.id ?? actionId),
+
+                      // 👇 mapeo 1:1 hacia los nombres que consume la vista de detalle
+                      client_name: a.client_name ?? a.clientName ?? "",
+                      barber_name: a.barber_name ?? a.barberName ?? "",
+                      appointment_date: a.appointment_date ?? a.dateISO ?? "",
+
+                      // horas ISO (la vista las formatea)
+                      start_time: a.start_time ?? a.startISO ?? "",
+                      end_time: a.end_time ?? a.endISO ?? "",
+
+                      status: a.status ?? "",
+
+                      // servicios como JSON string [{ name, price, duration }]
+                      services: JSON.stringify(
+                        (a.services ?? []).map((s: any) => ({
+                          name: s.name,
+                          price: Number(s.price) || 0,
+                          duration: Number(s.duration) || 0,
+                        }))
+                      ),
+                    },
+                  });
+                });
+              }}
+
               style={({ pressed }) => ({
                 padding: 12,
                 borderRadius: 12,
@@ -253,6 +335,8 @@ export default function CitasScreen() {
             >
               <Text style={{ color: COLORS.text, fontWeight: "700" }}>Ver detalle</Text>
             </Pressable>
+
+
             <Pressable
               onPress={() => { /* TODO: reprogramar */ setActionId(null); }}
               style={({ pressed }) => ({
@@ -263,6 +347,7 @@ export default function CitasScreen() {
             >
               <Text style={{ color: COLORS.text, fontWeight: "700" }}>Reprogramar</Text>
             </Pressable>
+
             <Pressable
               onPress={() => { /* TODO: cancelar */ setActionId(null); }}
               style={({ pressed }) => ({
@@ -276,6 +361,7 @@ export default function CitasScreen() {
           </View>
         </View>
       </Modal>
+
     </View>
   );
 }
