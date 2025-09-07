@@ -3,7 +3,7 @@ import { api } from "@/assets/src/lib/api";
 import axios from "axios";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
+ ActivityIndicator,
   LayoutAnimation,
   Modal,
   Platform,

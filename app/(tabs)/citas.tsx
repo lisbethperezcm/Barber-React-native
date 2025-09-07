@@ -4,9 +4,11 @@ import { useAppointmentsByClient, type Appointment } from "@/assets/src/features
 import { AppointmentCard } from "@/components/AppointmentCard";
 import Loader from "@/components/Loader";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import React, { useContext, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
+  AppState,
   FlatList,
   Modal,
   Platform,
@@ -17,7 +19,9 @@ import {
   View
 } from "react-native";
 
+
 type Filter = "all" | "reservadas" |"en proceso" | "canceladas" | "completadas";
+
 
 const COLORS = {
   bg: "#FFFFFF",
@@ -29,9 +33,9 @@ const COLORS = {
   chipInactiveBorder: "#E5E7EB",
   brand: "#111827",
   // estados
-  reservado: "#F97316",   // naranja 500
-  confirmado: "#2563EB",  // azul 600
-  completado: "#16A34A",  // verde 600
+  reservado: "#F97316",
+  confirmado: "#2563EB",
+  completado: "#16A34A",
   danger: "#B91C1C",
 };
 
@@ -61,6 +65,7 @@ export default function CitasScreen() {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [actionId, setActionId] = useState<number | null>(null);
+
   const { isBarber, role, loading } = useContext(AuthContext);
   const [actionItem, setActionItem] = React.useState<any | null>(null);
 
@@ -92,19 +97,38 @@ export default function CitasScreen() {
   if (error) {
     console.log("❌ Error useAppointments:", error);
     // si es axios error, puedes inspeccionar la respuesta
+
     if ((error as any).response) {
       console.log("🔎 Error response data:", (error as any).response.data);
       console.log("🔎 Error response status:", (error as any).response.status);
     }
   }
 
+  // Refetch al enfocar la pantalla (navegación)
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch, isBarber])
+  );
+
+  // Refetch al volver al primer plano (foreground)
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        refetch();
+      }
+    });
+    return () => sub.remove();
+  }, [refetch]);
 
   const filtered = useMemo(() => {
     const list = (data ?? []) as Appointment[];
     const q = norm(query);
 
     return list.filter((a) => {
-      const sk = statusKey(a.status); // ← normalizado a "reservada" | "cancelada" | "completada"
+
+      const sk = statusKey(a.status); 
+
 
       const byStatus =
         filter === "all" ||
@@ -143,11 +167,11 @@ export default function CitasScreen() {
       <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, backgroundColor: COLORS.bg }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View>{/* espacio para notificaciones si lo necesitas */}</View>
+            <View>{/*fffff*/}</View>
 
             {/* Agendar cita button */}
             <Pressable
-              onPress={() => router.push("/booking/new")}   // 👈 solo este cambio
+              onPress={() => router.push("/booking/new")}
               style={({ pressed }) => ({
                 width: 36,
                 height: 36,
@@ -188,12 +212,14 @@ export default function CitasScreen() {
           />
         </View>
 
+
         {/* Chips de filtro: Todas | Reservadas | canceladas | Completadas */}
         <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
           {[
             { key: "all" as const, label: "Todas" },
             { key: "reservadas" as const, label: "Reservadas" },   // ← claves en PLURAL para que coincidan con Filter
             { key: "canceladas" as const, label: "Canceladas" },
+
             { key: "completadas" as const, label: "Completadas" },
             { key: "en proceso" as const, label: "En proceso" },
           ].map((opt) => {
@@ -243,27 +269,23 @@ export default function CitasScreen() {
               <Text style={{ color: COLORS.textMuted }}>No hay citas para mostrar.</Text>
             </View>
           }
+          // ✅ 3) Pull-to-refresh (manual)
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} />}
         />
       )}
 
-      {/* Modal de acciones (kebab) */}
-      <Modal
-        visible={actionId !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setActionId(null)}
-      >
-        <Pressable
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.3)" }}
-          onPress={() => setActionId(null)}
-        />
+
+      {/* Modal de acciones */}
+      <Modal visible={actionId !== null} transparent animationType="fade" onRequestClose={() => setActionId(null)}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.3)" }} onPress={() => setActionId(null)} />
+
         <View style={{ backgroundColor: "#fff", padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
           <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text, marginBottom: 12 }}>
             Acciones
           </Text>
           <View style={{ gap: 8 }}>
             <Pressable
+
               onPress={() => {
                 if (actionId == null) return;
 
@@ -304,6 +326,7 @@ export default function CitasScreen() {
                   });
                 });
               }}
+
               style={({ pressed }) => ({
                 padding: 12,
                 borderRadius: 12,
@@ -339,12 +362,6 @@ export default function CitasScreen() {
         </View>
       </Modal>
 
-
     </View>
   );
-
-
-
-
-
 }

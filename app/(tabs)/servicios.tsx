@@ -1,7 +1,9 @@
 // app/(tabs)/Servicios.tsx
 import { useServices } from "@/assets/src/features/service/useServices";
+import Loader from "@/components/Loader";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback } from "react";
 import {
   FlatList,
   RefreshControl,
@@ -18,79 +20,56 @@ type Service = {
   price: number;
 };
 
-const MOCK_SERVICES: Service[] = [
-  {
-    id: 1,
-    name: "Corte clásico",
-    description: "Corte tradicional con tijeras y máquina",
-    durationMin: 30,
-    price: 500,
-  },
-  {
-    id: 2,
-    name: "Corte y Barba",
-    description: "Corte completo más arreglo de barba",
-    durationMin: 45,
-    price: 750,
-  },
-  {
-    id: 3,
-    name: "Arreglo de Barba",
-    description: "Perfilado y arreglo de barba únicamente",
-    durationMin: 20,
-    price: 300,
-  },
-  {
-    id: 4,
-    name: "Corte Premium",
-    description: "Corte, barba, lavado y tratamiento",
-    durationMin: 60,
-    price: 1000,
-  },
-];
-
 export default function Servicios() {
-
   const { data, isLoading, error, isFetching, refetch } = useServices();
   const isRefreshing = !isLoading && isFetching;
-
   const services = data || [];
-  const [refreshing, setRefreshing] = React.useState(false);
+
   React.useEffect(() => {
-    if (error) {
-      console.error("Error al cargar los servicios:", error);
-    }
+    if (error) console.error("Error al cargar los servicios:", error);
   }, [error]);
-  
-  const onRefresh = async () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 600); // simula fetch
-  };
+
+  // ✅ Refetch al enfocar la pantalla
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
+
 
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Servicios</Text>
 
-      <FlatList
-        data={services}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={{ height: 2}} />}
-        renderItem={({ item }) => <ServiceCard item={item} />}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={
-          <View style={{ alignItems: "center", marginTop: 24 }}>
-            <Text style={styles.emptyText}>No hay servicios disponibles.</Text>
-          </View>
-        }
-      />
+
+
+      {/* Lista */}
+      {isLoading ? (
+        <Loader text="Cargando servicios..." />
+      ) : (
+        <FlatList
+          data={services}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.listContent}
+          ItemSeparatorComponent={() => <View style={{ height: 2 }} />}
+          renderItem={({ item }) => <ServiceCard item={item} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={refetch} />
+          }
+          ListEmptyComponent={
+            <View style={{ alignItems: "center", marginTop: 24 }}>
+              <Text style={styles.emptyText}>No hay servicios disponibles.</Text>
+            </View>
+          }
+        />
+      )}
     </View>
+
+
   );
 }
 
-function ServiceCard({ item }: { item}) {
+function ServiceCard({ item }: { item: Service }) {
   return (
     <View style={styles.card}>
       <View style={styles.iconBox}>
@@ -115,6 +94,7 @@ function ServiceCard({ item }: { item}) {
     </View>
   );
 }
+
 
 function formatMoney(n: number) {
   return n.toFixed(0);
