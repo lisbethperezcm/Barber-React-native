@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   bannerText: { color: COLORS.textMuted },
 
   fab: {
-    position: "absolute", right: 16, bottom: 90, width: 56, height: 56, borderRadius: 28,
+    position: "absolute", right: 16, bottom: 20, width: 56, height: 56, borderRadius: 28,
     backgroundColor: COLORS.brand, alignItems: "center", justifyContent: "center", elevation: 4,
   },
 });

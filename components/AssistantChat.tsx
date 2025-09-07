@@ -71,9 +71,9 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
 
   const API_BASE = useMemo(() => {
     return Platform.select({
-      android: "http://10.0.0.15:7070",
-      ios: "http://10.0.0.15:7070",
-      default: "http://10.0.0.15:7070",
+      android: "https://assistant-server-production-bc4b.up.railway.app",
+      ios: "https://assistant-server-production-bc4b.up.railway.app",
+      default: "https://assistant-server-production-bc4b.up.railway.app",
     })!;
   }, []);
 
