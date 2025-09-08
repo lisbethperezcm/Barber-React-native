@@ -1,6 +1,7 @@
 import { AuthContext } from "@/assets/src/context/AuthContext";
 import api from "@/assets/src/lib/http";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useContext, useEffect, useState } from "react";
 import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -121,6 +122,22 @@ export default function Perfil() {
         </View>
 
         <View style={{ flex: 1 }} />
+      {/* Botón cambiar contraseña */}
+         {/* Botón cambiar contraseña */}
+        <TouchableOpacity
+          style={styles.changePasswordBtn}
+          onPress={() => {
+            router.push("/changePassword");
+            console.log("Ir a cambiar contraseña");
+          }}
+        >
+          <Ionicons name="key-outline" size={22} color={COLORS.text} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.changePasswordTitle}>Cambiar Contraseña</Text>
+            <Text style={styles.changePasswordSubtitle}>Actualizar tu contraseña de acceso</Text>
+          </View>
+          <Ionicons name="chevron-forward-outline" size={20} color={COLORS.textMuted} />
+        </TouchableOpacity>
 
         {/* Botón cerrar sesión */}
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
@@ -173,4 +190,31 @@ const styles = StyleSheet.create({
     gap: 10, marginHorizontal: 16, marginBottom: 32,
   },
   logoutText: { color: "#FFFFFF", fontWeight: "700", fontSize: 18 },
+
+    changePasswordBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    gap: 12,
+  },
+  changePasswordTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  changePasswordSubtitle: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+  },
+
 });
