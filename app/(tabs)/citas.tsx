@@ -1,6 +1,7 @@
 import { AuthContext } from "@/assets/src/context/AuthContext";
 import { useAppointmentsByBarber } from "@/assets/src/features/appointment/useAppointmentsByBarber";
 import { useAppointmentsByClient, type Appointment } from "@/assets/src/features/appointment/useAppointmentsByClient";
+import { api } from "@/assets/src/lib/api";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import Loader from "@/components/Loader";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +9,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   AppState,
   FlatList,
   Modal,
@@ -16,12 +19,10 @@ import {
   RefreshControl,
   Text,
   TextInput,
-  View
+  View,
 } from "react-native";
 
-
-type Filter = "all" | "reservadas" |"en proceso" | "canceladas" | "completadas";
-
+type Filter = "all" | "reservadas" | "en proceso" | "canceladas" | "completadas";
 
 const COLORS = {
   bg: "#FFFFFF",
@@ -45,7 +46,7 @@ const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
 // Devuelve la categoría canónica que usan los tabs (en singular)
 const statusKey = (
   raw: unknown
-): "reservada" | "cancelada" | "completada" |"en proceso" | "" => {
+): "reservada" | "cancelada" | "completada" | "en proceso" | "" => {
   const s = norm(raw);
 
   // sinónimos / variantes comunes
@@ -69,6 +70,10 @@ export default function CitasScreen() {
   const { isBarber, role, loading } = useContext(AuthContext);
   const [actionItem, setActionItem] = React.useState<any | null>(null);
 
+  // 🔽 Estados para cancelar
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [successVisible, setSuccessVisible] = useState(false);
 
   const clientQ = useAppointmentsByClient({ enabled: !isBarber });
   const barberQ = useAppointmentsByBarber({ enabled: isBarber });
@@ -127,8 +132,7 @@ export default function CitasScreen() {
 
     return list.filter((a) => {
 
-      const sk = statusKey(a.status); 
-
+      const sk = statusKey(a.status);
 
       const byStatus =
         filter === "all" ||
@@ -147,9 +151,6 @@ export default function CitasScreen() {
     });
   }, [data, filter, query]);
 
-  /*const renderItem = ({ item }: { item: Appointment }) => (
-    <AppointmentCard appointment={item} onPressMore={() => setActionId(item.id)} />
-  );*/
   const renderItem = ({ item }: { item: Appointment }) => (
     <AppointmentCard
       appointment={item}
@@ -160,6 +161,25 @@ export default function CitasScreen() {
     />
   );
 
+  // 🔽 Función de cancelación (PUT)
+  async function cancelAppointment(appointmentId: number) {
+    try {
+      setCancelLoading(true);
+      await api.put(`/appointments/${appointmentId}/status`, { status: 6 }); // 6 = Cancelado
+      setConfirmId(null);
+      setSuccessVisible(true);
+      refetch(); // refresca la lista
+      setTimeout(() => setSuccessVisible(false), 14000);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "No se pudo cancelar la cita.";
+      Alert.alert("Error", msg);
+    } finally {
+      setCancelLoading(false);
+    }
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg, paddingTop: Platform.OS === "android" ? 8 : 0 }}>
@@ -212,14 +232,12 @@ export default function CitasScreen() {
           />
         </View>
 
-
         {/* Chips de filtro: Todas | Reservadas | canceladas | Completadas */}
         <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
           {[
             { key: "all" as const, label: "Todas" },
             { key: "reservadas" as const, label: "Reservadas" },   // ← claves en PLURAL para que coincidan con Filter
             { key: "canceladas" as const, label: "Canceladas" },
-
             { key: "completadas" as const, label: "Completadas" },
             { key: "en proceso" as const, label: "En proceso" },
           ].map((opt) => {
@@ -255,7 +273,6 @@ export default function CitasScreen() {
 
       {/* Lista */}
       {isLoading ? (
-
         <Loader text="Cargando citas..." />
       ) : (
         <FlatList
@@ -269,11 +286,10 @@ export default function CitasScreen() {
               <Text style={{ color: COLORS.textMuted }}>No hay citas para mostrar.</Text>
             </View>
           }
-          // ✅ 3) Pull-to-refresh (manual)
+          // ✅ Pull-to-refresh (manual)
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refetch} />}
         />
       )}
-
 
       {/* Modal de acciones */}
       <Modal visible={actionId !== null} transparent animationType="fade" onRequestClose={() => setActionId(null)}>
@@ -285,7 +301,6 @@ export default function CitasScreen() {
           </Text>
           <View style={{ gap: 8 }}>
             <Pressable
-
               onPress={() => {
                 if (actionId == null) return;
 
@@ -326,7 +341,6 @@ export default function CitasScreen() {
                   });
                 });
               }}
-
               style={({ pressed }) => ({
                 padding: 12,
                 borderRadius: 12,
@@ -335,7 +349,6 @@ export default function CitasScreen() {
             >
               <Text style={{ color: COLORS.text, fontWeight: "700" }}>Ver detalle</Text>
             </Pressable>
-
 
             <Pressable
               onPress={() => { /* TODO: reprogramar */ setActionId(null); }}
@@ -348,8 +361,13 @@ export default function CitasScreen() {
               <Text style={{ color: COLORS.text, fontWeight: "700" }}>Reprogramar</Text>
             </Pressable>
 
+            {/* 🔽 Cancelar → abre confirmación */}
             <Pressable
-              onPress={() => { /* TODO: cancelar */ setActionId(null); }}
+              onPress={() => {
+                if (actionId == null) return;
+                setConfirmId(actionId); // abrir modal de confirmación
+                setActionId(null);      // cerrar acciones
+              }}
               style={({ pressed }) => ({
                 padding: 12,
                 borderRadius: 12,
@@ -362,6 +380,142 @@ export default function CitasScreen() {
         </View>
       </Modal>
 
+      {/* Modal de confirmación de cancelación (centrado + icono de advertencia) */}
+      <Modal
+        visible={confirmId !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmId(null)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.35)",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 24,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#fff",
+              width: "100%",
+              borderRadius: 16,
+              padding: 18,
+              alignItems: "center",
+            }}
+          >
+            {/* Ícono de advertencia dentro de círculo rojo suave */}
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: "#FEE2E2", // rojo suave
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 10,
+              }}
+            >
+              <Ionicons name="warning-outline" size={28} color={COLORS.danger} />
+            </View>
+
+            <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text, textAlign: "center" }}>
+              ¿Estás seguro que deseas cancelar la cita?
+            </Text>
+
+            <Text style={{ color: COLORS.textMuted, textAlign: "center", marginTop: 4 }}>
+              Esta acción no se puede deshacer.
+            </Text>
+
+            {/* Botones centrados */}
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 12,
+                justifyContent: "center",
+                marginTop: 14,
+                width: "100%",
+              }}
+            >
+              <Pressable
+                onPress={() => setConfirmId(null)}
+                style={({ pressed }) => ({
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  minWidth: 120,
+                  alignItems: "center",
+                  borderRadius: 12,
+                  backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
+                })}
+                disabled={cancelLoading}
+              >
+                <Text style={{ fontWeight: "700", color: COLORS.text }}>No</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => confirmId && cancelAppointment(confirmId)}
+                style={({ pressed }) => ({
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  minWidth: 120,
+                  alignItems: "center",
+                  borderRadius: 12,
+                  backgroundColor: COLORS.danger,
+                  opacity: pressed || cancelLoading ? 0.85 : 1,
+                })}
+                disabled={cancelLoading}
+              >
+                {cancelLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={{ fontWeight: "800", color: "#fff" }}>Sí, cancelar</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 🔽 Popup verde de éxito */}
+      <Modal
+        visible={successVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSuccessVisible(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.25)",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 24,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#fff",
+              width: "100%",
+              borderRadius: 16,
+              padding: 18,
+              alignItems: "center",
+              gap: 8,
+              borderWidth: 2,
+              borderColor: COLORS.completado,
+            }}
+          >
+            <Text style={{ fontSize: 20 }}>✅</Text>
+            <Text
+              style={{ fontSize: 16, fontWeight: "800", color: COLORS.completado }}
+            >
+              Cita cancelada exitosamente
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
