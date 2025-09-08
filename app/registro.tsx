@@ -1,5 +1,5 @@
 // app/(auth)/register.tsx
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
