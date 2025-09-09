@@ -1,5 +1,7 @@
 // app/(auth)/register.tsx
 import { useRegister } from "@/assets/src/features/auth/useRegister";
+
+
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -18,8 +20,8 @@ import {
 
 const COLORS = {
   bg: "#FFFFFF",
-  text: "#111827",  // color más oscuro
-  muted: "#6B7280", // gris para placeholder
+  text: "#111827",  // color principal
+  muted: "#6B7280",
   border: "#E5E7EB",
   brand: "#0F172A",
 };
@@ -84,6 +86,7 @@ export default function RegisterScreen() {
 
   return (
     <>
+
       <Stack.Screen
         options={{ title: "Formulario de Registro", headerShown: false, headerBackVisible: false }}
       />
@@ -96,6 +99,11 @@ export default function RegisterScreen() {
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Botón Back "<" con estilo */}
+          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={30} color={COLORS.text} />
+          </Pressable>
+
           <Text style={styles.title}>Vip Stylist</Text>
           <Text style={styles.subtitle}>Crea tu cuenta</Text>
 
@@ -227,8 +235,12 @@ export default function RegisterScreen() {
           <Pressable onPress={() => router.replace("/login")} style={{ marginTop: 16 }}>
             <Text style={{ textAlign: "center", color: COLORS.muted }}>
               ¿Ya tienes una cuenta?{" "}
-              <Text style={{ textDecorationLine: "underline", color: COLORS.text }}>
-                Iniciar Sesión
+
+              <Text
+                style={{ textDecorationLine: "underline", color: COLORS.text }}
+              >
+                Inicia sesión
+
               </Text>
             </Text>
           </Pressable>
@@ -239,7 +251,17 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, paddingTop: 36, gap: 8 },
+  container: { padding: 24, paddingTop: 20, gap: 5 },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+    alignSelf: "flex-start",
+  },
+  backTxt: { fontSize: 30, fontWeight: "400", color: COLORS.text },
   title: {
     fontSize: 28,
     fontWeight: "800",
@@ -254,8 +276,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: "600",      // más fuerte
-    color: COLORS.text,     // más oscuro como en login
+    fontWeight: "600",
+    color: COLORS.text,
     marginBottom: 6,
     marginTop: 6,
   },
@@ -265,7 +287,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontSize: 14, // placeholder más pequeño
+    fontSize: 14,
     color: COLORS.text,
     backgroundColor: "#fff",
   },
