@@ -1,7 +1,11 @@
 // app/(auth)/register.tsx
+import { useRegister } from "@/assets/src/features/auth/useRegister";
+import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -22,6 +26,7 @@ const COLORS = {
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { mutate: register, isPending } = useRegister();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -31,19 +36,60 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const canSubmit = useMemo(() => {
     const emailOk = /\S+@\S+\.\S+/.test(email);
     const passOk = password.length >= 6 && password === confirm;
     return firstName && lastName && emailOk && phone && address && passOk;
   }, [firstName, lastName, email, phone, address, password, confirm]);
 
+  const handleRegister = () => {
+    // Validación mínima (el backend también valida)
+    if (password !== confirm) {
+      Alert.alert("Contraseña", "Las contraseñas no coinciden");
+      return;
+    }
+
+    register(
+      {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        email: email.trim(),
+        password,
+        password_confirmation: confirm,
+        phone_number: phone.trim(),
+        address: address.trim(),
+        // Si tu hook NO fija el rol internamente, descomenta:
+        // role_id: 3,
+      } as any,
+      {
+        onSuccess: () => {
+          router.replace("/login");
+          Alert.alert("Registro", "Cuenta creada con éxito. Por favor, inicia sesión.");
+        },
+        onError: (err: any) => {
+          const msg =
+            err?.response?.data?.message ||
+            err?.message ||
+            "No se pudo completar el registro.";
+
+          console.log("Error en el registro:", msg);
+          Alert.alert("Error", "No se pudo completar el registro.");
+        },
+      }
+    );
+  };
+
   return (
     <>
+      <Stack.Screen
+        options={{ title: "Formulario de Registro", headerShown: false, headerBackVisible: false }}
+      />
 
-      <Stack.Screen options={{ title: "Formulario de Registro", headerShown: false, headerBackVisible: false }} />
-      
       <KeyboardAvoidingView
-        behavior={Platform.select({ ios: "padding", android: "padding"})}
+        behavior={Platform.select({ ios: "padding", android: "padding" })}
         style={{ flex: 1, backgroundColor: COLORS.bg }}
       >
         <ScrollView
@@ -109,43 +155,79 @@ export default function RegisterScreen() {
             placeholderTextColor={COLORS.muted}
           />
 
+          {/* Contraseña con ojito + icono info */}
           <Text style={styles.label}>Contraseña</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="**********"
-            placeholderTextColor={COLORS.muted}
-            secureTextEntry
-          />
+          <View style={styles.rowBetween}>
+            <View style={[styles.inputWrapper, { flex: 1 }]}>
+              <TextInput
+                style={[styles.input, { flex: 1, borderWidth: 0 }]}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="**********"
+                placeholderTextColor={COLORS.muted}
+                secureTextEntry={!showPassword}
+              />
+              <Pressable onPress={() => setShowPassword((prev) => !prev)}>
+                <Ionicons
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={22}
+                  color={COLORS.muted}
+                />
+              </Pressable>
+            </View>
 
+            <Pressable
+              onPress={() =>
+                Alert.alert(
+                  "Requisitos de contraseña",
+                  "- Mínimo 8 caracteres\n- Al menos una mayúscula\n- Al menos un número\n- Sin espacios"
+                )
+              }
+              style={{ marginLeft: 8 }}
+            >
+              <Ionicons name="information-circle-outline" size={22} color={COLORS.brand} />
+            </Pressable>
+          </View>
+
+          {/* Confirmación con ojito */}
           <Text style={styles.label}>Confirmar contraseña</Text>
-          <TextInput
-            style={styles.input}
-            value={confirm}
-            onChangeText={setConfirm}
-            placeholder="*********"
-            placeholderTextColor={COLORS.muted}
-            secureTextEntry
-          />
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={[styles.input, { flex: 1, borderWidth: 0 }]}
+              value={confirm}
+              onChangeText={setConfirm}
+              placeholder="*********"
+              placeholderTextColor={COLORS.muted}
+              secureTextEntry={!showConfirm}
+            />
+            <Pressable onPress={() => setShowConfirm((prev) => !prev)}>
+              <Ionicons
+                name={showConfirm ? "eye-off" : "eye"}
+                size={22}
+                color={COLORS.muted}
+              />
+            </Pressable>
+          </View>
 
           <Pressable
-            disabled={!canSubmit}
-            onPress={() => console.log("UI only, values OK")}
-            style={[styles.button, !canSubmit && { opacity: 0.6 }]}
+            disabled={!canSubmit || isPending}
+            onPress={handleRegister}
+            style={[styles.button, (!canSubmit || isPending) && { opacity: 0.6 }]}
           >
-            <Text style={styles.buttonText}>Registrarse</Text>
+            {isPending ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.buttonText}>Registrando…</Text>
+              </View>
+            ) : (
+              <Text style={styles.buttonText}>Registrarse</Text>
+            )}
           </Pressable>
 
-          <Pressable
-            onPress={() => router.replace("/login")}
-            style={{ marginTop: 16 }}
-          >
+          <Pressable onPress={() => router.replace("/login")} style={{ marginTop: 16 }}>
             <Text style={{ textAlign: "center", color: COLORS.muted }}>
               ¿Ya tienes una cuenta?{" "}
-              <Text
-                style={{ textDecorationLine: "underline", color: COLORS.text }}
-              >
+              <Text style={{ textDecorationLine: "underline", color: COLORS.text }}>
                 Iniciar Sesión
               </Text>
             </Text>
@@ -187,7 +269,18 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     backgroundColor: "#fff",
   },
+  // 🔹 Añadidos sin alterar tu look&feel
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    backgroundColor: "#fff",
+  },
   row2: { flexDirection: "row", alignItems: "flex-start" },
+  rowBetween: { flexDirection: "row", alignItems: "center" },
   button: {
     backgroundColor: COLORS.brand,
     paddingVertical: 14,

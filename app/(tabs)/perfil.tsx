@@ -1,17 +1,19 @@
 import { AuthContext } from "@/assets/src/context/AuthContext";
 import api from "@/assets/src/lib/http";
+import Loader from "@/components/Loader";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useContext, useEffect, useState } from "react";
-import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useLogout } from "../../assets/src/features/auth/useLogout";
 
 export default function Perfil() {
-  const { isBarber, role, loading } = useContext(AuthContext);
+  const { isBarber, loading } = useContext(AuthContext);
   const [user, setUser] = useState<any>(null);
   const [fetching, setFetching] = useState(false);
   const logout = useLogout();
+
   useEffect(() => {
     if (loading) return;
 
@@ -22,15 +24,9 @@ export default function Perfil() {
         if (!isBarber) {
           // --- CLIENTE ---
           const raw = await SecureStore.getItemAsync("client");
-
-
-          let clientId = raw;
-
+          const clientId = raw;
           const res = await api.get(`/clients/${clientId}`);
-
-          const payload = res.data?.data; // << objeto real
-
-          console.log(payload);
+          const payload = res.data?.data;
 
           setUser({
             firstName: payload?.first_name ?? "",
@@ -43,16 +39,9 @@ export default function Perfil() {
         } else {
           // --- BARBERO ---
           const raw = await SecureStore.getItemAsync("barber");
-          console.log("Barber raw:", raw);
-
-          let barberId: any;
-          barberId = raw;
-          console.log("Barber ID:", barberId);
+          const barberId: any = raw;
           const res2 = await api.get(`/barbers/${barberId}`);
-
-          const payload2 = res2.data?.data; // << objeto real
-
-          console.log(payload2);
+          const payload2 = res2.data?.data;
 
           setUser({
             firstName: payload2?.first_name ?? "",
@@ -62,8 +51,6 @@ export default function Perfil() {
             address: payload2?.address ?? "",
             role: "Barbero",
           });
-
-
         }
       } catch (e) {
         console.log("Error cargando perfil:", e);
@@ -74,19 +61,8 @@ export default function Perfil() {
     })();
   }, [isBarber, loading]);
 
-
-
-
-  if (loading || fetching || !user) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
-        <Text>Cargando perfil…</Text>
-      </View>
-    );
-  }
-
-  const initials = getInitials(user.firstName, user.lastName);
+  const isLoadingUI = loading || fetching || !user;
+  const initials = getInitials(user?.firstName, user?.lastName);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -96,36 +72,46 @@ export default function Perfil() {
 
         {/* Tarjeta de perfil */}
         <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+          {isLoadingUI ? (
+            // 👇 Loader dentro de la tarjeta, mantiene layout y evita pantalla negra
+            <View style={{ paddingVertical: 24, alignItems: "center", justifyContent: "center", width: "100%" }}>
+              <Loader text="Cargando perfil..." />
+            </View>
+          ) : (
+            <>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{initials}</Text>
+              </View>
 
-          <Text style={styles.name}>
-            {user.firstName} {user.lastName}
-          </Text>
-          <Text style={styles.role}>{user.role}</Text>
+              <Text style={styles.name}>
+                {user.firstName} {user.lastName}
+              </Text>
+              <Text style={styles.role}>{user.role}</Text>
 
-          <View style={styles.infoRow}>
-            <Ionicons name="mail-outline" size={22} color={COLORS.textMuted} />
-            <Text style={styles.infoText}>{user.email}</Text>
-          </View>
+              <View style={styles.infoRow}>
+                <Ionicons name="mail-outline" size={22} color={COLORS.textMuted} />
+                <Text style={styles.infoText}>{user.email}</Text>
+              </View>
 
-          <View style={styles.infoRow}>
-            <Ionicons name="call-outline" size={22} color={COLORS.textMuted} />
-            <Text style={styles.infoText}>{user.phone || "-"}</Text>
-          </View>
+              <View style={styles.infoRow}>
+                <Ionicons name="call-outline" size={22} color={COLORS.textMuted} />
+                <Text style={styles.infoText}>{user.phone || "-"}</Text>
+              </View>
 
-          <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={22} color={COLORS.textMuted} />
-            <Text style={styles.infoText}>{user.address || "-"}</Text>
-          </View>
+              <View style={styles.infoRow}>
+                <Ionicons name="location-outline" size={22} color={COLORS.textMuted} />
+                <Text style={styles.infoText}>{user.address || "-"}</Text>
+              </View>
+            </>
+          )}
         </View>
 
         <View style={{ flex: 1 }} />
-      {/* Botón cambiar contraseña */}
-         {/* Botón cambiar contraseña */}
+
+        {/* Botón cambiar contraseña */}
         <TouchableOpacity
-          style={styles.changePasswordBtn}
+          style={[styles.changePasswordBtn, isLoadingUI && { opacity: 0.6 }]}
+          disabled={isLoadingUI}
           onPress={() => {
             router.push("/changePassword");
             console.log("Ir a cambiar contraseña");
@@ -140,7 +126,11 @@ export default function Perfil() {
         </TouchableOpacity>
 
         {/* Botón cerrar sesión */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+        <TouchableOpacity
+          style={[styles.logoutBtn, isLoadingUI && { opacity: 0.6 }]}
+          onPress={logout}
+          disabled={isLoadingUI}
+        >
           <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
           <Text style={styles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
@@ -149,7 +139,7 @@ export default function Perfil() {
   );
 }
 
-function getInitials(first: string, last: string) {
+function getInitials(first?: string, last?: string) {
   const f = (first || "").trim().charAt(0).toUpperCase();
   const l = (last || "").trim().charAt(0).toUpperCase();
   return `${f}${l}`;
@@ -174,6 +164,8 @@ const styles = StyleSheet.create({
     paddingVertical: 32, paddingHorizontal: 20, marginHorizontal: 16,
     shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 }, elevation: 3, marginBottom: 32,
+    minHeight: 220, // 👈 asegura altura para que el Loader se vea centrado
+    overflow: "hidden",
   },
   avatar: {
     width: 100, height: 100, borderRadius: 999, backgroundColor: "#E9FCEB",
@@ -182,7 +174,7 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 40, fontWeight: "800", color: COLORS.accent },
   name: { fontSize: 22, fontWeight: "700", color: COLORS.text, marginBottom: 6 },
   role: { fontSize: 16, color: COLORS.textMuted, marginBottom: 20 },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14 },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14, alignSelf: "stretch" },
   infoText: { fontSize: 16, color: COLORS.text, flexShrink: 1 },
   logoutBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
@@ -191,7 +183,7 @@ const styles = StyleSheet.create({
   },
   logoutText: { color: "#FFFFFF", fontWeight: "700", fontSize: 18 },
 
-    changePasswordBtn: {
+  changePasswordBtn: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
@@ -216,5 +208,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textMuted,
   },
-
 });

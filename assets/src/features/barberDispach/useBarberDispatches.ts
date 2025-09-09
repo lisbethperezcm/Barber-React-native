@@ -70,7 +70,7 @@ export function useBarberDispatches() {
 
       // ✅ Endpoint actualizado
       const { data } = await api.get<{ data: ApiDispatch[] }>("/barber-dispatch/", {
-        params: barberParsed ? { barber_id: barberParsed } : undefined,
+      //  params: barberParsed ? { barber_id: barberParsed } : undefined,
       });
 
       const list = data?.data ?? [];
