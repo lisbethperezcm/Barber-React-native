@@ -101,17 +101,6 @@ const TIME_SLOTS_FALLBACK: string[] = [
   "9:00 AM - 9:50 AM",
   "9:30 AM - 10:20 AM",
   "10:00 AM - 10:50 AM",
-  "10:30 AM - 11:20 AM",
-  "11:00 AM - 11:50 AM",
-  "11:30 AM - 12:20 PM",
-  "1:00 PM - 1:50 PM",
-  "1:30 PM - 2:20 PM",
-  "2:00 PM - 2:50 PM",
-  "2:30 PM - 3:20 PM",
-  "3:00 PM - 3:50 PM",
-  "3:30 PM - 4:20 PM",
-  "4:00 PM - 4:50 PM",
-  "4:30 PM - 5:20 PM",
 ];
 
 // ⚠️ Esta función es la MISMA que tenías (no cambia formato que envías al API)
@@ -264,7 +253,7 @@ const handleBackAndRefresh = async () => {
           const right = (s.endISO ?? "").trim();
           return right ? `${left} - ${right}` : left;
         })
-        : TIME_SLOTS_FALLBACK,
+        : [],
     [slotsApi]
   );
 
@@ -630,42 +619,52 @@ const handleBackAndRefresh = async () => {
               </View>
 
               {/* Horarios */}
-              <View>
-                <Text style={styles.sectionTitle}>Selecciona la hora</Text>
-                {loadingSlots && <Text style={{ color: COLORS.muted, marginBottom: 8 }}>Cargando horarios…</Text>}
+             <View>
+  <Text style={styles.sectionTitle}>Selecciona la hora</Text>
 
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-                  {timeSlots.map((slot, idx) => {
-                    const active = selectedTimeSlot === slot;
-                    return (
-                      <Pressable
-                        key={`${slot}-${idx}`}
-                        onPress={() => setSelectedTimeSlot(slot)}
-                        disabled={!!loadingSlots || !selectedDate}
-                        style={({ pressed }) => [
-                          styles.slot,
-                          {
-                            width: "48%",
-                            borderColor: active ? COLORS.brand : COLORS.border,
-                            backgroundColor: active ? COLORS.brand : "#FFFFFF",
-                            opacity: pressed ? 0.9 : loadingSlots ? 0.6 : 1,
-                          },
-                        ]}
-                      >
-                        <Text style={{ fontSize: 13, fontWeight: "700", color: active ? "#FFFFFF" : COLORS.text }}>
-                          {slotLabelFromRaw(slot)}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+  {loadingSlots && selectedDate && (
+    <Text style={{ color: COLORS.muted, marginBottom: 8 }}>Cargando horarios…</Text>
+  )}
 
-                {!!slotsError && (
-                  <Text style={{ color: "#b91c1c", marginTop: 4 }}>
-                    No fue posible cargar los horarios disponibles.
-                  </Text>
-                )}
-              </View>
+  {(!timeSlots.length && !selectedDate) ? (
+    <Text style={{ color: COLORS.muted, marginTop: 4, textAlign: "center", justifyContent: "center" }}>
+      No hay horarios para mostrar
+    </Text>
+  ) : (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+      {timeSlots.map((slot, idx) => {
+        const active = selectedTimeSlot === slot;
+        return (
+          <Pressable
+            key={`${slot}-${idx}`}
+            onPress={() => setSelectedTimeSlot(slot)}
+            disabled={!!loadingSlots || !selectedDate}
+            style={({ pressed }) => [
+              styles.slot,
+              {
+                width: "48%",
+                borderColor: active ? COLORS.brand : COLORS.border,
+                backgroundColor: active ? COLORS.brand : "#FFFFFF",
+                opacity: pressed ? 0.9 : loadingSlots ? 0.6 : 1,
+              },
+            ]}
+          >
+            <Text style={{ fontSize: 13, fontWeight: "700", color: active ? "#FFFFFF" : COLORS.text }}>
+              {slotLabelFromRaw(slot)}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  )}
+
+  {!!slotsError && selectedDate && (
+    <Text style={{ color: "#b91c1c", marginTop: 4 }}>
+      No fue posible cargar los horarios disponibles o el barbero no trabaja ese día.
+    </Text>
+  )}
+</View>
+
             </View>
           )}
 

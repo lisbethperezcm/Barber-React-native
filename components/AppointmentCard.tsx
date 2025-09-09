@@ -1,6 +1,7 @@
+import { AuthContext } from "@/assets/src/context/AuthContext";
 import { Appointment } from "@/assets/src/features/appointment/useAppointmentsByClient";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import React, { useContext, useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 
 const COLORS = {
@@ -8,38 +9,41 @@ const COLORS = {
   textMuted: "#6B7280",
   border: "#E5E7EB",
   reserved: "#F97316",   // naranja
-  progress: "#2563EB",  // azul
+  progress: "#2563EB",   // azul
   completed: "#16A34A",  // verde
-  cancelled:"#B91C1C", //rojo
+  cancelled:"#B91C1C",   // rojo
 };
+
+const TIMEZONE = "America/Santo_Domingo";
 
 function statusColors(status?: string) {
   const s = (status ?? "").toLowerCase();
-  if (s === "reservado") return { bg: "#FFF7ED", text: "#F97316", line: COLORS.reserved };      // bg naranja muy claro
-  if (s === "en proceso") return { bg: "#EFF6FF", text: "#2563EB", line: COLORS.progress };    // bg azul muy claro
-  if (s === "completado") return { bg: "#ECFDF5", text: "#16A34A", line: COLORS.completed };    // bg verde muy claro
-  if (s === "cancelado") return { bg: "#FEE2E2", text: "#B91C1C", line: COLORS.cancelled };    // bg rojo claro
+  if (s === "reservado")   return { bg: "#FFF7ED", text: "#F97316", line: COLORS.reserved };
+  if (s === "en proceso")  return { bg: "#EFF6FF", text: "#2563EB", line: COLORS.progress };
+  if (s === "completado")  return { bg: "#ECFDF5", text: "#16A34A", line: COLORS.completed };
+  if (s === "cancelado")   return { bg: "#FEE2E2", text: "#B91C1C", line: COLORS.cancelled };
   return { bg: "#F3F4F6", text: "#6B7280", line: "#9CA3AF" };
 }
 
-function formatDateShort(iso: string) {
-  try {
-    const d = new Date(iso);
-    // 15 Mar 2025
-    return d.toLocaleDateString("es-DO", { day: "2-digit", month: "short", year: "numeric" })
-      .replace(".", ""); // algunos locales ponen punto en el mes
-  } catch {
-    return iso;
-  }
+function safeDateFromISO(iso?: string) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
 }
 
-function formatTime12(iso: string) {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleTimeString("es-DO", { hour: "numeric", minute: "2-digit", hour12: true });
-  } catch {
-    return iso;
-  }
+function formatDateShortFromISO(iso?: string) {
+  const d = safeDateFromISO(iso);
+  if (!d) return iso ?? "";
+  // 15 Sep 2025 (sin punto en “sept.”)
+  return d
+    .toLocaleDateString("es-DO", { day: "2-digit", month: "short", year: "numeric", timeZone: TIMEZONE })
+    .replace(".", "");
+}
+
+function formatTime12FromISO(iso?: string) {
+  const d = safeDateFromISO(iso);
+  if (!d) return iso ?? "";
+  return d.toLocaleTimeString("es-DO", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: TIMEZONE });
 }
 
 function currencyDOP(amount: number) {
@@ -64,8 +68,13 @@ export const AppointmentCard = ({
   onPressMore?: () => void;
 }) => {
   const palette = useMemo(() => statusColors(appointment.status), [appointment.status]);
-  const dateText = formatDateShort(appointment.dateISO);
-  const startText = formatTime12(appointment.startISO);
+
+  // ⚠️ Usa SIEMPRE la hora de inicio para derivar la fecha mostrada en local
+  const dateText = formatDateShortFromISO(appointment.startISO) || formatDateShortFromISO(appointment.dateISO);
+  const startText = formatTime12FromISO(appointment.startISO);
+
+    // Role
+    const { isBarber } = useContext(AuthContext);
 
   return (
     <Pressable
@@ -100,7 +109,7 @@ export const AppointmentCard = ({
             marginRight: 6,
           }}
         >
-          <Text style={{ fontWeight: "800", color: palette.text, textTransform: "lowercase" }}>
+          <Text style={{ fontWeight: "800", color: palette.text, textTransform: "capitalize" }}>
             {appointment.status}
           </Text>
         </View>
@@ -121,7 +130,7 @@ export const AppointmentCard = ({
 
       {/* barber */}
       <Text style={{ color: COLORS.textMuted, marginTop: 4 }}>
-        Con {appointment.barberName}
+        Con {!isBarber ? appointment.barberName : appointment.clientName}
       </Text>
 
       {/* total */}
