@@ -1,9 +1,12 @@
 // app/(tabs)/despachos.tsx
+import { useBarberDispatches } from "@/assets/src/features/barberDispach/useBarberDispatches";
 import { Link } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -11,21 +14,7 @@ import {
   View,
 } from "react-native";
 
-type Product = {
-  product_name: string;
-  quantity: number;
-  unit_cost: string;
-  subtotal: string;
-};
-
-type DispatchItem = {
-  id: number;
-  barber_name?: string; // no se muestra en la UI
-  dispatch_date: string; // YYYY-MM-DD
-  status: "Sin estado" | "Entregado" | "Devuelto" | "Pagado";
-  products: Product[];
-  total: string;
-};
+type StatusUI = "Sin estado" | "Entregado" | "Devuelto" | "Pagado";
 
 const COLORS = {
   bg: "#F5F7FA",
@@ -40,44 +29,21 @@ const COLORS = {
   white: "#FFFFFF",
 };
 
-const initialData: DispatchItem[] = [
-  {
-    id: 1,
-    barber_name: "Darling Perez",
-    dispatch_date: "2025-04-02",
-    status: "Entregado",
-    products: [
-      { product_name: "Aceite para Barba Premium", quantity: 2, unit_cost: "160.00", subtotal: "320.00" },
-      { product_name: "Pomada Mate Extra Fuerte", quantity: 3, unit_cost: "130.00", subtotal: "390.00" },
-    ],
-    total: "710.00",
-  },
-  {
-    id: 2,
-    barber_name: "Carlos Mendoza",
-    dispatch_date: "2025-03-31",
-    status: "Pagado",
-    products: [
-      { product_name: "Shampoo Mentolado", quantity: 5, unit_cost: "100.00", subtotal: "500.00" },
-    ],
-    total: "500.00",
-  },
-  {
-    id: 3,
-    barber_name: "Ana Ruiz",
-    dispatch_date: "2025-04-01",
-    status: "Sin estado",
-    products: [{ product_name: "Cera Mate", quantity: 4, unit_cost: "162.50", subtotal: "650.00" }],
-    total: "650.00",
-  },
-];
-
-function formatCurrency(n: string | number) {
+function formatCurrency(n: number | string) {
   const num = typeof n === "string" ? Number(n) : n;
   return Number.isNaN(num) ? "$0.00" : `$${num.toFixed(2)}`;
 }
 
-function statusStyle(s: DispatchItem["status"]) {
+// Mapea cualquier string del backend a tus 4 estados UI
+function mapStatusToUI(s: string | undefined): StatusUI {
+  const v = (s || "").toLowerCase();
+  if (v.includes("paga")) return "Pagado";
+  if (v.includes("entreg")) return "Entregado";
+  if (v.includes("devuel")) return "Devuelto";
+  return "Sin estado";
+}
+
+function statusStyle(s: StatusUI) {
   switch (s) {
     case "Entregado":
       return { bg: "rgba(22,163,74,0.12)", text: COLORS.green, border: "rgba(22,163,74,0.25)" };
@@ -91,18 +57,19 @@ function statusStyle(s: DispatchItem["status"]) {
 }
 
 export default function Despachos() {
-  const [data] = useState<DispatchItem[]>(initialData);
+  const { data = [], isLoading, isFetching, refetch, error } = useBarberDispatches();
 
+  // KPIs calculados con los datos reales
   const kpis = useMemo(() => {
     const total = data.length;
-    const entregados = data.filter((d) => d.status === "Entregado").length;
-    const pagados = data.filter((d) => d.status === "Pagado").length;
-    const valor = data.reduce((acc, d) => acc + Number(d.total || 0), 0);
+    const entregados = data.filter((d) => mapStatusToUI(d.status) === "Entregado").length;
+    const pagados = data.filter((d) => mapStatusToUI(d.status) === "Pagado").length;
+    const valor = data.reduce((acc, d) => acc + Number(d.totalAmount || 0), 0);
     return { total, entregados, pagados, valor };
   }, [data]);
 
-  const renderItem = ({ item }: { item: DispatchItem }) => {
-    const st = statusStyle(item.status);
+  const renderItem = ({ item }: { item: ReturnType<typeof normalizeForRender>[number] }) => {
+    const st = statusStyle(item.statusUi);
 
     return (
       <View style={styles.card}>
@@ -112,21 +79,26 @@ export default function Despachos() {
             <Text style={styles.avatarText}>D{item.id}</Text>
           </View>
 
-          {/* Centro: título, fecha y botón Ver detalle (debajo del título) */}
+          {/* Centro */}
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>Despacho #{item.id}</Text>
-            <Text style={styles.cardSub}>
-              {new Date(item.dispatch_date).toLocaleDateString("es-ES", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })}
-            </Text>
+            <Text style={styles.cardSub}>{item.dateLabel}</Text>
 
             <Link
               href={{
                 pathname: "/despachos/[id]",
-                params: { id: String(item.id), data: JSON.stringify(item) },
+                params: {
+                  id: String(item.id),
+                  // Pasamos lo que la vista de detalle necesite; aquí enviamos un payload amigable
+                  data: JSON.stringify({
+                    id: item.id,
+                    dispatch_date: item.dateISO,
+                    status: item.statusUi,
+                    total: item.totalAmount,
+                    // puedes adjuntar products si tu detalle lo usa
+                    products: item.products,
+                  }),
+                },
               }}
               replace={false}
               asChild
@@ -141,20 +113,28 @@ export default function Despachos() {
           <View style={{ alignItems: "flex-end", gap: 6 }}>
             <View style={[styles.badge, { backgroundColor: st.bg, borderColor: st.border }]}>
               <Text style={[styles.badgeText, { color: st.text }]} numberOfLines={1}>
-                {item.status}
+                {item.statusUi}
               </Text>
             </View>
             <Text style={styles.totalLabel}>Total productos</Text>
-            <Text style={styles.totalText}>{formatCurrency(item.total)}</Text>
+            <Text style={styles.totalText}>{formatCurrency(item.totalAmount)}</Text>
           </View>
         </View>
       </View>
     );
   };
 
+  const listData = normalizeForRender(data);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator
+        refreshControl={
+          <RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} />
+        }
+      >
         <View style={styles.screenPad}>
           <Text style={styles.title}>Despachos</Text>
           <Text style={styles.subtitle}>Gestiona los despachos de productos</Text>
@@ -163,39 +143,95 @@ export default function Despachos() {
           <View style={styles.kpiGrid}>
             <View style={styles.kpiCard}>
               <Text style={styles.kpiLabel}>Total Despachos</Text>
-              <Text style={styles.kpiValue}>{kpis.total}</Text>
+              {isLoading ? (
+                <ActivityIndicator />
+              ) : (
+                <Text style={styles.kpiValue}>{kpis.total}</Text>
+              )}
             </View>
             <View style={styles.kpiCard}>
               <Text style={styles.kpiLabel}>Entregados</Text>
-              <Text style={[styles.kpiValue, { color: COLORS.green }]}>{kpis.entregados}</Text>
+              {isLoading ? (
+                <ActivityIndicator />
+              ) : (
+                <Text style={[styles.kpiValue, { color: COLORS.green }]}>{kpis.entregados}</Text>
+              )}
             </View>
             <View style={styles.kpiCard}>
               <Text style={styles.kpiLabel}>Pagados</Text>
-              <Text style={[styles.kpiValue, { color: COLORS.blue }]}>{kpis.pagados}</Text>
+              {isLoading ? (
+                <ActivityIndicator />
+              ) : (
+                <Text style={[styles.kpiValue, { color: COLORS.blue }]}>{kpis.pagados}</Text>
+              )}
             </View>
             <View style={styles.kpiCard}>
               <Text style={styles.kpiLabel}>Valor Total</Text>
-              <Text style={styles.kpiMoney}>{formatCurrency(kpis.valor)}</Text>
+              {isLoading ? (
+                <ActivityIndicator />
+              ) : (
+                <Text style={styles.kpiMoney}>{formatCurrency(kpis.valor)}</Text>
+              )}
             </View>
           </View>
 
-          {/* Lista de despachos (sin productos) */}
-          <FlatList
-            data={data}
-            keyExtractor={(it) => String(it.id)}
-            renderItem={renderItem}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-            ListEmptyComponent={
-              <View style={styles.empty}>
-                <Text style={styles.emptyText}>No hay despachos todavía</Text>
-              </View>
-            }
-          />
+          {/* Error state */}
+          {error ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>
+                No se pudo cargar la información. Desliza hacia abajo para reintentar.
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Lista */}
+          {isLoading ? (
+            <View style={styles.skeleton}>
+              <ActivityIndicator />
+              <Text style={{ color: COLORS.muted, marginTop: 6 }}>Cargando despachos…</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={listData}
+              keyExtractor={(it) => String(it.id)}
+              renderItem={renderItem}
+              scrollEnabled={false}
+              ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+              ListEmptyComponent={
+                <View style={styles.empty}>
+                  <Text style={styles.emptyText}>No hay despachos todavía</Text>
+                </View>
+              }
+            />
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+/** Normaliza los campos de la API normalizada (Dispatch) a lo que usa la UI */
+function normalizeForRender(data: ReturnType<typeof useBarberDispatches> extends { data: infer D }
+  ? D extends (infer T)[] ? T[] : []
+  : never) {
+  // data es Dispatch[]
+  return (data || []).map((d) => {
+    const statusUi = mapStatusToUI(d.status);
+    const date = new Date(d.dateISO);
+    const dateLabel = date.toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+    return {
+      id: d.id,
+      dateISO: d.dateISO,
+      dateLabel,
+      statusUi,
+      totalAmount: d.totalAmount,
+      products: d.products,
+    };
+  });
 }
 
 const styles = StyleSheet.create({
@@ -239,7 +275,6 @@ const styles = StyleSheet.create({
   cardTitle: { color: COLORS.text, fontWeight: "800", fontSize: 16 },
   cardSub: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
 
-  // Chip de estado
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -254,7 +289,6 @@ const styles = StyleSheet.create({
   totalLabel: { color: COLORS.muted, fontSize: 11, marginTop: 2 },
   totalText: { color: COLORS.text, fontWeight: "800" },
 
-  // Botón "Ver detalle" (debajo del título)
   detailBtnInline: {
     alignSelf: "flex-start",
     marginTop: 8,
@@ -265,12 +299,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     backgroundColor: COLORS.white,
   },
-  detailBtnInlineText: {
-    color: COLORS.text,
-    fontWeight: "700",
-  },
+  detailBtnInlineText: { color: COLORS.text, fontWeight: "700" },
 
-  // Empty state
   empty: {
     backgroundColor: COLORS.card,
     borderRadius: 16,
@@ -281,4 +311,15 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   emptyText: { color: COLORS.muted },
+
+  skeleton: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    alignItems: "center",
+    marginTop: 12,
+    gap: 6,
+  },
 });
