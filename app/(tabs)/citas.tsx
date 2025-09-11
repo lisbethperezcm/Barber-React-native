@@ -109,22 +109,29 @@ export default function CitasScreen() {
     }
   }
 
-  // Refetch al enfocar la pantalla (navegación)
-  useFocusEffect(
-    useCallback(() => {
-      refetch();
-    }, [refetch, isBarber])
-  );
+// Refetch al enfocar la pantalla (solo ANDROID)
+useFocusEffect(
+  useCallback(() => {
+    if (Platform.OS !== "android") return undefined; // no-op en iOS
 
-  // Refetch al volver al primer plano (foreground)
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        refetch();
-      }
-    });
-    return () => sub.remove();
-  }, [refetch]);
+    refetch();
+
+    // opcional: cleanup vacío
+    return () => {};
+  }, [refetch, isBarber])
+);
+
+// Refetch al volver al foreground (solo ANDROID)
+useEffect(() => {
+  if (Platform.OS !== "android") return;
+
+  const sub = AppState.addEventListener("change", (state) => {
+    if (state === "active") {
+      refetch();
+    }
+  });
+  return () => sub.remove();
+}, [refetch]);
 
   const filtered = useMemo(() => {
     const list = (data ?? []) as Appointment[];
