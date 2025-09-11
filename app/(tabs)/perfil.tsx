@@ -5,14 +5,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useContext, useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useLogout } from "../../assets/src/features/auth/useLogout";
 
 export default function Perfil() {
   const { isBarber, loading } = useContext(AuthContext);
   const [user, setUser] = useState<any>(null);
   const [fetching, setFetching] = useState(false);
+
+  // Hook de logout (función directa) + estado de loading para el botón
   const logout = useLogout();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -64,6 +67,19 @@ export default function Perfil() {
   const isLoadingUI = loading || fetching || !user;
   const initials = getInitials(user?.firstName, user?.lastName);
 
+  // 👉 Mismo efecto visual que el login: loader, deshabilitado y mismo color
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await logout(); // tu hook limpia sesión/secure storage/etc.
+      router.replace("/login");
+    } catch (e) {
+      console.log("Error al cerrar sesión:", e);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -110,8 +126,8 @@ export default function Perfil() {
 
         {/* Botón cambiar contraseña */}
         <TouchableOpacity
-          style={[styles.changePasswordBtn, isLoadingUI && { opacity: 0.6 }]}
-          disabled={isLoadingUI}
+          style={[styles.changePasswordBtn, (isLoadingUI || isLoggingOut) && { opacity: 0.6 }]}
+          disabled={isLoadingUI || isLoggingOut}
           onPress={() => {
             router.push("/changePassword");
             console.log("Ir a cambiar contraseña");
@@ -125,14 +141,21 @@ export default function Perfil() {
           <Ionicons name="chevron-forward-outline" size={20} color={COLORS.textMuted} />
         </TouchableOpacity>
 
-        {/* Botón cerrar sesión */}
+        {/* Botón cerrar sesión — MISMA LÓGICA QUE LOGIN */}
         <TouchableOpacity
-          style={[styles.logoutBtn, isLoadingUI && { opacity: 0.6 }]}
-          onPress={logout}
-          disabled={isLoadingUI}
+          style={[styles.logoutBtn, (isLoadingUI || isLoggingOut) && styles.logoutBtnDisabled]}
+          onPress={handleLogout}
+          disabled={isLoadingUI || isLoggingOut}
+          activeOpacity={isLoggingOut ? 1 : 0.85}
         >
-          <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.logoutText}>Cerrar sesión</Text>
+          {isLoggingOut ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <>
+              <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.logoutText}>Cerrar sesión</Text>
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -176,13 +199,20 @@ const styles = StyleSheet.create({
   role: { fontSize: 16, color: COLORS.textMuted, marginBottom: 20 },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14, alignSelf: "stretch" },
   infoText: { fontSize: 16, color: COLORS.text, flexShrink: 1 },
+
+  // Logout
   logoutBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     backgroundColor: COLORS.brand, borderRadius: 14, paddingVertical: 16,
     gap: 10, marginHorizontal: 16, marginBottom: 32,
   },
+  // Mantiene color; opcional un leve cambio de opacidad como en login
+  logoutBtnDisabled: {
+    opacity: 0.9,
+  },
   logoutText: { color: "#FFFFFF", fontWeight: "700", fontSize: 18 },
 
+  // Change password
   changePasswordBtn: {
     flexDirection: "row",
     alignItems: "center",

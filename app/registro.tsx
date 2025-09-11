@@ -164,8 +164,21 @@ export default function RegisterScreen() {
           />
 
           {/* Contraseña con ojito + icono info */}
-          <Text style={styles.label}>Contraseña</Text>
+         
           <View style={styles.rowBetween}>
+          <Text style={styles.label}>Contraseña</Text>
+          <Pressable
+              onPress={() =>
+                Alert.alert(
+                  "Requisitos de contraseña",
+                  "- Mínimo 8 caracteres\n- Al menos una mayúscula\n- Al menos un número\n- Sin espacios"
+                )
+              }
+              style={{ marginLeft: 8 }}
+            >
+              <Ionicons name="information-circle-outline" size={22} color={COLORS.brand} />
+            </Pressable>
+          </View>
             <View style={[styles.inputWrapper, { flex: 1 }]}>
               <TextInput
                 style={[styles.input, { flex: 1, borderWidth: 0 }]}
@@ -184,18 +197,7 @@ export default function RegisterScreen() {
               </Pressable>
             </View>
 
-            <Pressable
-              onPress={() =>
-                Alert.alert(
-                  "Requisitos de contraseña",
-                  "- Mínimo 8 caracteres\n- Al menos una mayúscula\n- Al menos un número\n- Sin espacios"
-                )
-              }
-              style={{ marginLeft: 8 }}
-            >
-              <Ionicons name="information-circle-outline" size={22} color={COLORS.brand} />
-            </Pressable>
-          </View>
+            
 
           {/* Confirmación con ojito */}
           <Text style={styles.label}>Confirmar contraseña</Text>
