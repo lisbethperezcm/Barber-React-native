@@ -5,7 +5,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { AppState, useColorScheme } from 'react-native';
-import 'react-native-reanimated';
+//import 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import './global.css';
 
@@ -59,7 +59,7 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="login" />
-              <Stack.Screen name="+not-found" />
+              {/*<Stack.Screen name="+not-found" />*/}
             </Stack>
           </SafeAreaView>
         </AuthProvider>

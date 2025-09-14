@@ -1,9 +1,11 @@
-import Header from "@/components/ui/Header"; // ajusta la ruta a tu componente
+// app/(tabs)/_layout.tsx
+import Header from "@/components/ui/Header";
 import { Tabs, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { Calendar, Home, User, Users } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
+//import "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabsLayout() {
@@ -21,7 +23,6 @@ export default function TabsLayout() {
           return;
         }
 
-        // Lecturas tolerantes
         const role = (await SecureStore.getItemAsync("role")) || "";
         const roleId = (await SecureStore.getItemAsync("role_id")) || "";
         const isBarberFlag = (await SecureStore.getItemAsync("isBarber")) || "";
@@ -30,15 +31,12 @@ export default function TabsLayout() {
         let roleFromUser = "";
         try {
           const u = userJson ? JSON.parse(userJson) : null;
-          // soporta user.role.name o user.roles[0].name
           roleFromUser =
             (u?.role?.name as string) ||
             (Array.isArray(u?.roles) && u.roles[0]?.name) ||
             (u?.role as string) ||
             "";
-        } catch {
-          // ignore
-        }
+        } catch {}
 
         const normalized = (s: string) => (s || "").toString().trim().toLowerCase();
 
@@ -48,7 +46,6 @@ export default function TabsLayout() {
           roleId === "2" ||
           normalized(isBarberFlag) === "true";
 
-        // Debug rápido (puedes quitarlo luego)
         console.log({
           role,
           roleId,
@@ -73,9 +70,13 @@ export default function TabsLayout() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff" }}>
-      {/* Header fijo */}
-      <Header notifications={3} />
+    <View style={{ flex: 1, backgroundColor: "#fff"}}>
+      {/* Header fijo (mantiene tu lógica).  
+          👉 notificationsHref usa la ruta REAL dentro de (tabs), aunque esté oculta en la tab bar */}
+      <Header
+  notifications={3}
+  onPressBell={() => router.push('/(tabs)/notificaciones' as const)}
+/>
 
       {/* Tabs */}
       <Tabs
@@ -105,7 +106,7 @@ export default function TabsLayout() {
 
         {/* HORARIOS: un solo Screen; se oculta con href:null si no es barbero */}
         <Tabs.Screen
-          name="horarios"  // <-- debe existir app/(tabs)/horarios.tsx
+          name="horarios"
           options={{
             title: "Horarios",
             tabBarIcon: (p) => <Calendar {...p} />,
@@ -116,7 +117,8 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="barberos"
           options={{
-            title: "Barberos", tabBarIcon: (p) => <Users {...p} />,
+            title: "Barberos",
+            tabBarIcon: (p) => <Users {...p} />,
             href: isBarber ? null : "/(tabs)/barberos",
           }}
         />
@@ -124,20 +126,18 @@ export default function TabsLayout() {
           name="perfil"
           options={{ title: "Perfil", tabBarIcon: (p) => <User {...p} /> }}
         />
-        
 
-        {/* Ocultar pestañas sobrantes */}
+        {/* Ocultar pestañas sobrantes, pero mantener rutas disponibles */}
         <Tabs.Screen name="explore" options={{ href: null }} />
         <Tabs.Screen name="two" options={{ href: null }} />
         <Tabs.Screen name="booking/new" options={{ href: null }} />
         <Tabs.Screen name="servicios" options={{ href: null }} />
         <Tabs.Screen name="notificaciones" options={{ href: null }} />
-       
+
         <Tabs.Screen name="despachos" options={{ href: null, headerShown: false }} />
         <Tabs.Screen name="despachos/[id]" options={{ href: null, headerShown: false }} />
         <Tabs.Screen name="appointments/[id]" options={{ href: null, headerShown: false }} />
         <Tabs.Screen name="changePassword" options={{ href: null, headerShown: false }} />
-
       </Tabs>
     </View>
   );

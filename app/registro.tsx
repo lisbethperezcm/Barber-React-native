@@ -43,7 +43,7 @@ export default function RegisterScreen() {
 
   const canSubmit = useMemo(() => {
     const emailOk = /\S+@\S+\.\S+/.test(email);
-    const passOk = password.length >= 6 && password === confirm;
+    const passOk = password.length >= 8 && password === confirm;
     return firstName && lastName && emailOk && phone && address && passOk;
   }, [firstName, lastName, email, phone, address, password, confirm]);
 
