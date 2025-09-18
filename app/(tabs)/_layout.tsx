@@ -74,7 +74,7 @@ export default function TabsLayout() {
       {/* Header fijo (mantiene tu lógica).  
           👉 notificationsHref usa la ruta REAL dentro de (tabs), aunque esté oculta en la tab bar */}
       <Header
-  notifications={3}
+  notifications={0}
   onPressBell={() => router.push('/(tabs)/notificaciones' as const)}
 />
 
