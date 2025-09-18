@@ -122,9 +122,9 @@ export default function BarberDashboard({ styles }: { styles?: any }) {
           <View style={s.quickIcon}><Text>📅</Text></View>
           <Text style={s.quickText}>Citas</Text>
         </Pressable>
-        <Pressable style={s.quickItem} onPress={() => router.push("/(tabs)/horarios")}>
-          <View style={s.quickIcon}><Text>⏰</Text></View>
-          <Text style={s.quickText}>Horarios</Text>
+        <Pressable style={styles.quickItem} onPress={() => router.push("/(tabs)/perfil")}>
+          <Text style={{ fontSize: 22 }}>⭐</Text>
+          <Text style={styles.quickText}>Evaluaciones</Text>
         </Pressable>
       </View>
 
@@ -285,7 +285,7 @@ const s = StyleSheet.create({
   },
   apptRightCol: {
     alignItems: "center",
-   
+
     minWidth: 90,
     justifyContent: "center"
   },

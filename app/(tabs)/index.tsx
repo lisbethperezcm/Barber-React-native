@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   },
   quickText: { color: COLORS.text, fontWeight: "600" },
 
-  banner: { width: 280, backgroundColor: COLORS.card, borderColor: COLORS.border, borderWidth: 1, borderRadius: 14, padding: 14 },
+  banner: { width: 315, backgroundColor: COLORS.card, borderColor: COLORS.border, borderWidth: 1, borderRadius: 14, padding: 14 },
   bannerIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.text, alignItems: "center", justifyContent: "center", marginBottom: 6 },
   bannerTitle: { color: COLORS.text, fontWeight: "700", marginBottom: 4 },
   bannerText: { color: COLORS.textMuted },
