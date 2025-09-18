@@ -1,3 +1,4 @@
+import AppointmentRatingSection from "@/components/AppointmentRatingSection";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
@@ -27,7 +28,7 @@ type Service = { name: string; price: number; duration: number };
 function pick(v?: string | string[], fallback = "") { return Array.isArray(v) ? v[0] ?? fallback : v ?? fallback; }
 function fmtTime(iso: string) {
   if (!iso) return "—";
-  try { return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }); }
+  try { return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "UTC" }); }
   catch { return iso; }
 }
 function fmtLongDate(yyyyMmDd: string) {
@@ -67,7 +68,11 @@ function statusStyle(status: string) {
 
 export default function AppointmentDetailScreen() {
   const router = useRouter();
+  // ⬇️ Tipamos también id/appointment_id/review_rating
   const params = useLocalSearchParams<{
+    id?: string;                 // por el archivo [id].tsx
+    appointment_id?: string;     // opcional, si lo envías así
+    review_rating?: string;      // rating previo opcional
     client_name?: string;
     barber_name?: string;
     appointment_date?: string;
@@ -92,9 +97,17 @@ export default function AppointmentDetailScreen() {
   const end_time = pick(params.end_time);
   const status = pick(params.status, "Reservado");
 
+  // ⬇️ NUEVO: id y rating previo desde params (o id del archivo)
+  const appointment_id = pick(params.appointment_id ?? params.id);
+  const review_rating = pick(params.review_rating);
+  const appointmentIdNum = Number(appointment_id || "0");
+
   const total = servicesArr.reduce((a, s) => a + (Number(s.price) || 0), 0);
   const totalMin = servicesArr.reduce((a, s) => a + (Number(s.duration) || 0), 0);
   const st = statusStyle(status);
+
+  // ⬇️ NUEVO: sólo mostrar calificación si está completada
+  const isCompleted = statusKey(status) === "completada";
 
   return (
     <View style={styles.container}>
@@ -118,7 +131,6 @@ export default function AppointmentDetailScreen() {
             <Text style={{ color: st.fg, fontWeight: "800" }}>{st.label}</Text>
           </View>
         </View>
-
 
         {/* Cliente */}
         <InfoCard
@@ -186,9 +198,19 @@ export default function AppointmentDetailScreen() {
           </View>
         </View>
 
-        {/* Botón inferior: VOLVER (como estaba: con texto y back) */}
-        <Pressable onPress={() => router.replace("/citas")} style={styles.primaryBtn}>
+        {/* ⬇️ NUEVO: Calificación solo si está Completada (antes del botón Volver) */}
+        {isCompleted && (
+          <View style={{ marginTop: 12 }}>
+            <AppointmentRatingSection
+              appointmentId={appointmentIdNum}
+              initialRating={review_rating ? Number(review_rating) : null}
+              // onSubmitted={(r) => {/* luego puedes invalidar queries aquí */}}
+            />
+          </View>
+        )}
 
+        {/* Botón inferior: VOLVER (como estaba) */}
+        <Pressable onPress={() => router.replace("/citas")} style={styles.primaryBtn}>
           <Text style={styles.primaryBtnText}>Volver</Text>
         </Pressable>
       </ScrollView>
@@ -259,7 +281,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: "700",
     fontSize: 18,
-
   },
 
   center: { alignItems: "center", marginBottom: 8 },
@@ -356,5 +377,4 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
   },
-  
 });

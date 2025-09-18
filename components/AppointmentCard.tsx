@@ -14,7 +14,7 @@ const COLORS = {
   cancelled:"#B91C1C",   // rojo
 };
 
-const TIMEZONE = "America/Santo_Domingo";
+const TIMEZONE = "UTC";
 
 function statusColors(status?: string) {
   const s = (status ?? "").toLowerCase();
