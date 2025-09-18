@@ -45,13 +45,14 @@ export default function Perfil() {
           const barberId: any = raw;
           const res2 = await api.get(`/barbers/${barberId}`);
           const payload2 = res2.data?.data;
-
+          console.log(res2);
           setUser({
             firstName: payload2?.first_name ?? "",
             lastName: payload2?.last_name ?? "",
             email: payload2?.email ?? "",
             phone: payload2?.phone_number ?? "",
             address: payload2?.address ?? "",
+            commission: payload2?.commission ?? "",
             role: "Barbero",
           });
         }
@@ -118,6 +119,14 @@ export default function Perfil() {
                 <Ionicons name="location-outline" size={22} color={COLORS.textMuted} />
                 <Text style={styles.infoText}>{user.address || "-"}</Text>
               </View>
+
+              {isBarber ? <View style={styles.infoRow}>
+                <Ionicons name="cut-outline" size={22} color={COLORS.textMuted} />
+                <Text style={styles.infoText}>
+                  {user.commission ? `${user.commission}%` : "-"}
+                </Text>
+
+              </View> : null}
             </>
           )}
         </View>
