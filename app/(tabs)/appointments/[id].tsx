@@ -1,8 +1,10 @@
+import { useBarberReviews, useCreateBarberReview } from "@/assets/src/features/reviews/useBarberReviews";
 import AppointmentRatingSection from "@/components/AppointmentRatingSection";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import React from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 const COLORS = {
   bg: "#FFFFFF",
@@ -12,9 +14,8 @@ const COLORS = {
   card: "#F9FAFC",
   white: "#FFFFFF",
   brand: "#111827",
-  // Paleta igual que Citas:
   reservado: "#F97316",
-  progress: "#2563EB",  // azul
+  progress: "#2563EB",
   completado: "#16A34A",
   danger: "#B91C1C",
   reservadoSoft: "#FFEDD5",
@@ -68,11 +69,10 @@ function statusStyle(status: string) {
 
 export default function AppointmentDetailScreen() {
   const router = useRouter();
-  // ⬇️ Tipamos también id/appointment_id/review_rating
   const params = useLocalSearchParams<{
-    id?: string;                 // por el archivo [id].tsx
-    appointment_id?: string;     // opcional, si lo envías así
-    review_rating?: string;      // rating previo opcional
+    id?: string;
+    appointment_id?: string;
+    review_rating?: string;
     client_name?: string;
     barber_name?: string;
     appointment_date?: string;
@@ -80,9 +80,10 @@ export default function AppointmentDetailScreen() {
     end_time?: string;
     status?: string;
     services?: string; // JSON: [{ name, price, duration }]
+    client_id?: string; // si ya lo pasas por params
   }>();
 
-  // parse servicios
+  // --- Servicios de la cita (sin cambios de UI) ---
   let servicesArr: Service[] = [];
   try {
     const raw = pick(params.services, "[]");
@@ -97,22 +98,116 @@ export default function AppointmentDetailScreen() {
   const end_time = pick(params.end_time);
   const status = pick(params.status, "Reservado");
 
-  // ⬇️ NUEVO: id y rating previo desde params (o id del archivo)
   const appointment_id = pick(params.appointment_id ?? params.id);
   const review_rating = pick(params.review_rating);
   const appointmentIdNum = Number(appointment_id || "0");
 
+  // --- Resolver client_id (solo para el POST) ---
+  const client_id_param = pick(params.client_id);
+  const [clientIdNum, setClientIdNum] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    (async () => {
+      const fromParam = Number(client_id_param);
+      if (Number.isFinite(fromParam) && fromParam > 0) {
+        setClientIdNum(fromParam);
+        return;
+      }
+      try {
+        const tryKeys = ["client_id", "userId", "user_id", "clientId"];
+        for (const k of tryKeys) {
+          const raw = await SecureStore.getItemAsync(k);
+          if (!raw) continue;
+          let val: any = raw;
+          try { const j = JSON.parse(raw); val = j?.id ?? j?.client_id ?? j; } catch {}
+          const n = Number(val);
+          if (Number.isFinite(n) && n > 0) {
+            setClientIdNum(n);
+            return;
+          }
+        }
+      } catch {}
+      setClientIdNum(null);
+    })();
+  }, [client_id_param]);
+
+  // --- Detectar si el usuario actual es CLIENTE (no barbero) ---
+  // Regla: si encontramos señales de barbero => NO cliente; si encontramos señales de cliente y NO de barbero => cliente.
+  const [isClient, setIsClient] = React.useState<boolean>(false);
+  React.useEffect(() => {
+    (async () => {
+      try {
+        // Lee posibles llaves que ya usas
+        const entries: Record<string, string | null> = {};
+        const keys = [
+          "role", "user", "profile", "auth_user",
+          "barber", "barber_id", "isBarber",
+          "client", "client_id", "isClient", "clientId",
+        ];
+        await Promise.all(keys.map(async k => { entries[k] = await SecureStore.getItemAsync(k).catch(() => null); }));
+
+        const asJSON = (v: string | null) => {
+          if (!v) return null;
+          try { return JSON.parse(v); } catch { return null; }
+        };
+
+        // Señales de BARBERO
+        const barberIdNum = Number(entries["barber_id"]);
+        const barberObj = asJSON(entries["barber"]);
+        const roleRaw = (entries["role"] || "").toLowerCase();
+        const userObj = asJSON(entries["user"]) || asJSON(entries["profile"]) || asJSON(entries["auth_user"]);
+
+        const isBarber =
+          Number.isFinite(barberIdNum) && barberIdNum > 0 ||
+          (barberObj && (barberObj.id || barberObj.barber_id)) ||
+          roleRaw.includes("barber") || roleRaw.includes("barbero") ||
+          (userObj && ["barber", "barbero"].includes(String(userObj.role || userObj.type || "").toLowerCase())) ||
+          entries["isBarber"] === "true";
+
+        // Señales de CLIENTE
+        const clientIdNum2 = Number(entries["client_id"]);
+        const clientObj = asJSON(entries["client"]);
+        const isClientFlag = entries["isClient"] === "true";
+        const roleLooksClient =
+          roleRaw.includes("client") || roleRaw.includes("cliente") ||
+          (userObj && ["client", "cliente", "customer", "usuario"].includes(String(userObj.role || userObj.type || "").toLowerCase()));
+
+        const isClientDetected =
+          (!isBarber) && (
+            (Number.isFinite(clientIdNum2) && clientIdNum2 > 0) ||
+            (clientObj && (clientObj.id || clientObj.client_id)) ||
+            isClientFlag || roleLooksClient
+          );
+
+        setIsClient(Boolean(isClientDetected));
+      } catch {
+        setIsClient(false); // por seguridad, si hay duda no mostramos rating
+      }
+    })();
+  }, []);
+
+  // --- Totales y estado ---
   const total = servicesArr.reduce((a, s) => a + (Number(s.price) || 0), 0);
   const totalMin = servicesArr.reduce((a, s) => a + (Number(s.duration) || 0), 0);
   const st = statusStyle(status);
-
-  // ⬇️ NUEVO: sólo mostrar calificación si está completada
   const isCompleted = statusKey(status) === "completada";
+
+  // --- Traer reviews y detectar si ya existe uno para esta cita ---
+  const { data: reviews = [] } = useBarberReviews({ barberScoped: false });
+  const existingReview = React.useMemo(
+    () => reviews.find((r) => r.appointment_id === appointmentIdNum),
+    [reviews, appointmentIdNum]
+  );
+  const initialRatingCombined: number | null =
+    (existingReview?.rating != null ? Number(existingReview.rating) : null) ??
+    (review_rating ? Number(review_rating) : null);
+  const ratingKey = `rating-${appointmentIdNum}-${existingReview?.id ?? "none"}-${existingReview?.rating ?? review_rating ?? 0}`;
+
+  const createReview = useCreateBarberReview();
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-        {/* Fila de título con flecha (icono sin texto) */}
+        {/* Fila de título */}
         <View style={styles.titleRow}>
           <Pressable
             onPress={() => router.replace("/citas")}
@@ -121,10 +216,10 @@ export default function AppointmentDetailScreen() {
           >
             <Ionicons name="arrow-back-outline" size={25} color={COLORS.text} />
           </Pressable>
-          <Text style={styles.titleText}>Detalle de la cita</Text>
+        <Text style={styles.titleText}>Detalle de la cita</Text>
         </View>
 
-        {/* Estado + label al lado del chip (debajo de la flecha) */}
+        {/* Estado */}
         <View style={styles.statusRow}>
           <Text style={styles.statusLabel}>Estado:</Text>
           <View style={[styles.badge, { backgroundColor: st.bg, borderColor: st.fg }]}>
@@ -138,20 +233,20 @@ export default function AppointmentDetailScreen() {
           label="Cliente"
           value={client_name || "—"}
         />
-        {/* Barbero (tijeras) */}
+        {/* Barbero */}
         <InfoCard
           icon={<Ionicons name="cut-outline" size={18} color={COLORS.text} />}
           label="Barbero"
           value={barber_name || "—"}
         />
-        {/* Fecha (calendario) */}
+        {/* Fecha */}
         <InfoCard
           icon={<Ionicons name="calendar-outline" size={18} color={COLORS.text} />}
           label="Fecha"
           value={fmtLongDate(appointment_date)}
         />
 
-        {/* Horarios (reloj) */}
+        {/* Horarios */}
         <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
           <MiniCard
             icon={<Ionicons name="time-outline" size={18} color={COLORS.text} />}
@@ -198,18 +293,40 @@ export default function AppointmentDetailScreen() {
           </View>
         </View>
 
-        {/* ⬇️ NUEVO: Calificación solo si está Completada (antes del botón Volver) */}
-        {isCompleted && (
+        {/* Rating: SOLO CLIENTES y SOLO COMPLETADAS */}
+        {isCompleted && isClient && (
           <View style={{ marginTop: 12 }}>
             <AppointmentRatingSection
+              key={ratingKey} // remount si cambia el review del server
               appointmentId={appointmentIdNum}
-              initialRating={review_rating ? Number(review_rating) : null}
-              // onSubmitted={(r) => {/* luego puedes invalidar queries aquí */}}
+              initialRating={initialRatingCombined}
+              onSubmitted={(rating: number) => {
+                if (!clientIdNum) {
+                  Alert.alert("No se pudo enviar la reseña", "No se encontró el client_id.");
+                  return;
+                }
+                createReview.mutate(
+                  {
+                    client_id: clientIdNum,
+                    appointment_id: appointmentIdNum,
+                    rating: Number(rating),
+                    comment: "",
+                  },
+                  {
+                    onSuccess: () => {
+                      Alert.alert("Gracias", "Tu reseña fue enviada.");
+                      // invalidateQueries ya se hace en el hook, refresca y se verá "Calificado"
+                    },
+                    onError: (e: any) =>
+                      Alert.alert("Error", e?.message ?? "No se pudo enviar la reseña."),
+                  }
+                );
+              }}
             />
           </View>
         )}
 
-        {/* Botón inferior: VOLVER (como estaba) */}
+        {/* Botón VOLVER */}
         <Pressable onPress={() => router.replace("/citas")} style={styles.primaryBtn}>
           <Text style={styles.primaryBtnText}>Volver</Text>
         </Pressable>
@@ -373,7 +490,7 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     color: COLORS.muted,
-    opacity: 0.9,           // “opaco” suave
+    opacity: 0.9,
     fontSize: 17,
     fontWeight: "700",
   },

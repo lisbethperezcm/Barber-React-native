@@ -615,18 +615,7 @@ export default function RescheduleAppointmentSheet({
                 </View>
               </View>
 
-              {/* Servicios */}
-              <View style={S.summaryBox}>
-                <Text style={S.summaryTitle}>Servicios (sin cambios)</Text>
-                <View style={S.summaryRow}>
-                  <Text style={S.summaryKey}>Duración total</Text>
-                  <Text style={S.summaryVal}>{Math.max(services?.totalMinutes || 0, 0)} min</Text>
-                </View>
-                <View style={S.summaryRow}>
-                  <Text style={S.summaryKey}>Total</Text>
-                  <Text style={S.summaryVal}>RD${Math.round(services?.totalPrice || 0)}</Text>
-                </View>
-              </View>
+             
 
               {/* Botonera alineada */}
               <View style={S.footerRow}>

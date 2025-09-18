@@ -390,6 +390,7 @@ export default function CitasScreen() {
                       end_time: a.end_time ?? a.endISO ?? "",
 
                       status: a.status ?? "",
+                      client_id: String(a.client_id ?? a.clientId ?? a.client?.id ?? ""),
 
                       // servicios como JSON string [{ name, price, duration }]
                       services: JSON.stringify(
