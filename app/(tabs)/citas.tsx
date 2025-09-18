@@ -22,6 +22,9 @@ import {
   View,
 } from "react-native";
 
+// ⬇️ NUEVO: importa el sheet de reprogramar
+import RescheduleAppointmentSheet from "@/components/RescheduleAppointmentSheet";
+
 type Filter = "all" | "reservadas" | "en proceso" | "canceladas" | "completadas";
 
 const COLORS = {
@@ -75,6 +78,19 @@ export default function CitasScreen() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [successVisible, setSuccessVisible] = useState(false);
 
+  // ⬇️ NUEVO: estado para reprogramar
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [resel, setResel] = useState<null | {
+    id: number | string;
+    barberId: number | string;
+    barberName: string;
+    dateISO: string;
+    start: string;
+    end?: string;
+    totalMinutes: number;
+    totalPrice: number;
+  }>(null);
+
   const clientQ = useAppointmentsByClient({ enabled: !isBarber });
   const barberQ = useAppointmentsByBarber({ enabled: isBarber });
 
@@ -86,7 +102,6 @@ export default function CitasScreen() {
 
   const isRefreshing = !isLoading && isFetching;
 
-  console.log(data)
   // Navegar al detalle desde el modal
   const handleViewDetail = () => {
     if (actionId == null) return;
@@ -101,46 +116,38 @@ export default function CitasScreen() {
 
   if (error) {
     console.log("❌ Error useAppointments:", error);
-    // si es axios error, puedes inspeccionar la respuesta
-
     if ((error as any).response) {
       console.log("🔎 Error response data:", (error as any).response.data);
       console.log("🔎 Error response status:", (error as any).response.status);
     }
   }
 
-// Refetch al enfocar la pantalla (solo ANDROID)
-useFocusEffect(
-  useCallback(() => {
-    if (Platform.OS !== "android") return undefined; // no-op en iOS
-
-    refetch();
-
-    // opcional: cleanup vacío
-    return () => {};
-  }, [refetch, isBarber])
-);
-
-// Refetch al volver al foreground (solo ANDROID)
-useEffect(() => {
-  if (Platform.OS !== "android") return;
-
-  const sub = AppState.addEventListener("change", (state) => {
-    if (state === "active") {
+  // Refetch al enfocar la pantalla (solo ANDROID)
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== "android") return undefined; // no-op en iOS
       refetch();
-    }
-  });
-  return () => sub.remove();
-}, [refetch]);
+      return () => { };
+    }, [refetch, isBarber])
+  );
+
+  // Refetch al volver al foreground (solo ANDROID)
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        refetch();
+      }
+    });
+    return () => sub.remove();
+  }, [refetch]);
 
   const filtered = useMemo(() => {
     const list = (data ?? []) as Appointment[];
     const q = norm(query);
 
     return list.filter((a) => {
-
       const sk = statusKey(a.status);
-
       const byStatus =
         filter === "all" ||
         (filter === "reservadas" && sk === "reservada") ||
@@ -186,6 +193,54 @@ useEffect(() => {
     } finally {
       setCancelLoading(false);
     }
+  }
+
+  // ⬇️ NUEVO: lista de barberos derivada de las citas (si ya tienes hook propio, úsalo)
+  const barbersList = useMemo(() => {
+    const map = new Map<string, string>();
+    (data as any[]).forEach((a) => {
+      const id = String(a?.barber?.id ?? a?.barber_id ?? "");
+      const name = a?.barber?.name ?? a?.barber_name ?? a?.barberName ?? "";
+      if (id && name) map.set(id, name);
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [data]);
+
+  // ⬇️ NUEVO: wrappers a tu disponibilidad (ajusta si ya tienes hooks/servicios)
+  async function getAvailableDays(barberId: number | string): Promise<string[]> {
+    try {
+      const res = await api.get(`/barbers/${barberId}/available-days`);
+      return res.data?.data ?? res.data ?? [];
+    } catch {
+      return [];
+    }
+  }
+  async function getAvailableSlots(barberId: number | string, dateISO: string): Promise<string[]> {
+    try {
+      const res = await api.get(`/barbers/${barberId}/available-slots`, { params: { date: dateISO } });
+      return res.data?.data ?? res.data ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  // ⬇️ NUEVO: abrir sheet con item seleccionado
+  function openRescheduleFor(item: any) {
+    const services = Array.isArray(item?.services) ? item.services : [];
+    const totalMinutes = services.reduce((acc: number, s: any) => acc + (Number(s?.duration) || 0), 0);
+    const totalPrice = services.reduce((acc: number, s: any) => acc + (Number(s?.price) || 0), 0);
+
+    setResel({
+      id: item?.id,
+      barberId: item?.barber?.id ?? item?.barber_id,
+      barberName: item?.barber?.name ?? item?.barber_name ?? item?.barberName ?? "",
+      dateISO: item?.appointment_date ?? item?.dateISO ?? "",
+      start: item?.start_time ?? item?.startISO ?? "",
+      end: item?.end_time ?? item?.endISO ?? "",
+      totalMinutes,
+      totalPrice,
+    });
+    setShowReschedule(true);
   }
 
   return (
@@ -243,7 +298,7 @@ useEffect(() => {
         <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
           {[
             { key: "all" as const, label: "Todas" },
-            { key: "reservadas" as const, label: "Reservadas" },   // ← claves en PLURAL para que coincidan con Filter
+            { key: "reservadas" as const, label: "Reservadas" },
             { key: "canceladas" as const, label: "Canceladas" },
             { key: "completadas" as const, label: "Completadas" },
             { key: "en proceso" as const, label: "En proceso" },
@@ -335,6 +390,7 @@ useEffect(() => {
                       end_time: a.end_time ?? a.endISO ?? "",
 
                       status: a.status ?? "",
+                      client_id: String(a.client_id ?? a.clientId ?? a.client?.id ?? ""),
 
                       // servicios como JSON string [{ name, price, duration }]
                       services: JSON.stringify(
@@ -357,8 +413,19 @@ useEffect(() => {
               <Text style={{ color: COLORS.text, fontWeight: "700" }}>Ver detalle</Text>
             </Pressable>
 
+            {/* ⬇️ NUEVO: Reprogramar → abre sheet con la cita seleccionada */}
             <Pressable
-              onPress={() => { /* TODO: reprogramar */ setActionId(null); }}
+              onPress={() => {
+                if (actionId == null) return;
+                const a: any =
+                  actionItem ??
+                  (Array.isArray(data) ? (data as Appointment[]).find(x => x.id === actionId) : null) ??
+                  {};
+                setActionId(null); // cerrar acciones
+                requestAnimationFrame(() => {
+                  openRescheduleFor(a); // abrir modal de reprogramar
+                });
+              }}
               style={({ pressed }) => ({
                 padding: 12,
                 borderRadius: 12,
@@ -523,6 +590,27 @@ useEffect(() => {
           </View>
         </View>
       </Modal>
+
+      {/* ⬇️ Modal de reprogramar */}
+      {resel && (
+        <RescheduleAppointmentSheet
+          visible={showReschedule}
+          onClose={() => setShowReschedule(false)}
+          onConfirmed={(_payload) => {
+            setShowReschedule(false);
+            refetch(); // refresca la lista
+          }}
+          appointmentId={resel.id}
+          currentBarberId={resel.barberId}
+          currentBarberName={resel.barberName}
+          currentDateISO={resel.dateISO}
+          currentStartTime={resel.start}
+          currentEndTime={resel.end}
+          services={{ totalMinutes: resel.totalMinutes, totalPrice: resel.totalPrice }}
+          barbers={barbersList.length ? barbersList : [{ id: resel.barberId, name: resel.barberName }]}
+        />
+      )}
+
     </View>
   );
 }

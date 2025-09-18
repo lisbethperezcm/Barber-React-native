@@ -5,7 +5,9 @@ import { AuthContext } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 
 type LoginPayload = { email: string; password: string };
-type LoginResponse = { access_token: string; refreshToken?: string };
+type LoginResponse = {
+  token: string; access_token: string; refreshToken?: string 
+};
 
 
 export function useLogin() {
