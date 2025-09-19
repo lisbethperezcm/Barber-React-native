@@ -27,38 +27,43 @@ export default function Dashboard() {
   const router = useRouter();
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-     const { isBarber, role, loading } = useContext(AuthContext);
+  const { isBarber, role, loading } = useContext(AuthContext);
 
-     console.log(isBarber,role);
-if (!role) {
+  console.log(isBarber, role);
+  if (!role) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator size="large" />
       </View>
     );
   }
-  
- 
 
-   
-    return (
-      <View style={styles.screen}>
-        <StatusBar style="dark" />
 
-   
 
-     
+
+  return (
+    <View style={styles.screen}>
+      <StatusBar style="dark" />
+
+
+
+
       {isBarber ? <BarberDashboard styles={styles} /> : <ClientDashboard styles={styles} />}
-      
-   
-    
-      {/* Botón flotante Chat */}
-      <Pressable style={styles.fab} onPress={() => setIsChatOpen((v) => !v)}>
-        <Text style={{ color: "#fff", fontSize: 18 }}>{isChatOpen ? "✖" : "💬"}</Text>
-      </Pressable>
 
-      <AssistantChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-    </View>
+
+
+      {/* Dentro del return de tu componente de pantalla */}
+      {isBarber ? (
+        <>
+          {/* Botón flotante Chat */}
+          <Pressable style={styles.fab} onPress={() => setIsChatOpen(v => !v)}>
+            <Text style={{ color: "#fff", fontSize: 18 }}>{isChatOpen ? "✖" : "💬"}</Text>
+          </Pressable>
+
+          <AssistantChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+        </>
+      ) : null}
+    </View >
   );
 }
 
