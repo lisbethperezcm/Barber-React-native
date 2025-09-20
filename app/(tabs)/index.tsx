@@ -53,7 +53,7 @@ export default function Dashboard() {
 
 
       {/* Dentro del return de tu componente de pantalla */}
-      {isBarber ? (
+      {!isBarber ? (
         <>
           {/* Botón flotante Chat */}
           <Pressable style={styles.fab} onPress={() => setIsChatOpen(v => !v)}>
