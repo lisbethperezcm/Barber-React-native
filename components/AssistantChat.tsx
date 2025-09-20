@@ -392,8 +392,8 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
 
     const res = await refetchSlots();
     const list: Slot[] =
-      (res?.data as any[])?.length
-        ? (res.data as any[]).map((s) => ({
+      (res?.data.slots as any[])?.length
+        ? (res.data.slots as any[]).map((s) => ({
           start_time: withSeconds(s.startISO ?? s.start_time ?? s.start ?? ""),
           end_time: withSeconds(s.endISO ?? s.end_time ?? s.end ?? ""),
         }))

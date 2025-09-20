@@ -130,49 +130,49 @@ export default function New() {
   const queryClient = useQueryClient();
 
 
-const handleBackAndRefresh = async () => {
-  const prevStep = Math.max(1, step - 1);
+  const handleBackAndRefresh = async () => {
+    const prevStep = Math.max(1, step - 1);
 
-  try {
-   
-    await queryClient.cancelQueries();
+    try {
 
-   
-    switch (prevStep) {
-      case 1:
-        
-        // Paso 1: Servicios
-        await queryClient.invalidateQueries({ queryKey: ["services"] });
-        break;
-
-      case 2:
-        // Paso 2: depende del rol
-        if (isBarber) {
-          await queryClient.invalidateQueries({ queryKey: ["clients"] });
-        } else {
-          await queryClient.invalidateQueries({ queryKey: ["barbers"] });
-        }
-         await queryClient.invalidateQueries({ queryKey: ["available-slots"] });
-        setSelectedDate(""); 
-        break;
-
-      case 3:
-        // Paso 3: Horarios/slots
-        await queryClient.invalidateQueries({ queryKey: ["available-slots"] });
-        setSelectedDate(""); 
-        break;
+      await queryClient.cancelQueries();
 
 
-      default:
-        // Paso 4 (Resumen) o cualquier otro: normalmente no requiere refetch
-        break;
+      switch (prevStep) {
+        case 1:
+
+          // Paso 1: Servicios
+          await queryClient.invalidateQueries({ queryKey: ["services"] });
+          break;
+
+        case 2:
+          // Paso 2: depende del rol
+          if (isBarber) {
+            await queryClient.invalidateQueries({ queryKey: ["clients"] });
+          } else {
+            await queryClient.invalidateQueries({ queryKey: ["barbers"] });
+          }
+          await queryClient.invalidateQueries({ queryKey: ["available-slots"] });
+          setSelectedDate("");
+          break;
+
+        case 3:
+          // Paso 3: Horarios/slots
+          await queryClient.invalidateQueries({ queryKey: ["available-slots"] });
+          setSelectedDate("");
+          break;
+
+
+        default:
+          // Paso 4 (Resumen) o cualquier otro: normalmente no requiere refetch
+          break;
+      }
+
+
+    } catch (e) {
+      console.log("[back-refresh] error:", e);
     }
-
-
-  } catch (e) {
-    console.log("[back-refresh] error:", e);
-  }
-};
+  };
 
   // ✅ Popup de éxito
   const [showSuccess, setShowSuccess] = useState(false);
@@ -229,26 +229,43 @@ const handleBackAndRefresh = async () => {
     () => selectedServiceDetails.reduce((acc, s) => acc + (s.duration_minutes || 0), 0),
     [selectedServiceDetails]
   );
-  const enableSlotsQuery = Boolean(selectedDate && totalMinutes && (!isBarber ? selectedBarber : true));
 
+
+  const hasBarberChoice = isBarber || selectedBarber !== undefined; // null es válido
+  const enableSlotsQuery = Boolean(selectedDate && (totalMinutes ?? 0) > 0 && hasBarberChoice);
+
+  // 2) Construir los params omitiendo barberId si es null o si esBarber
+  const queryParams1 = {
+    date: selectedDate!,
+    duration: totalMinutes!,
+    ...(isBarber
+      ? {} // el barbero logueado no necesita barberId
+      : selectedBarber === null
+        ? {} // "Sin preferencia" → no enviar barberId
+        : { barberId: selectedBarber } // número → enviar barberId
+    ),
+  };
+
+  // 3) Llamar la hook con params limpios
+  // 3) Llamar la hook con params limpios
   const {
-    data: slotsApi = [],
+    data,
     isLoading: loadingSlots,
     error: slotsError,
     refetch: refetchSlots,
-  } = useAvailableSlots(
-    {
-      barberId: !isBarber ? selectedBarber : undefined,
-      date: selectedDate,
-      duration: totalMinutes,
-    },
-    { enabled: enableSlotsQuery }
-  );
+  } = useAvailableSlots(queryParams1, { enabled: enableSlotsQuery });
+
+  console.log(">> Slots data raw:", data);
+  
+
+  // 🔹 Ahora extraes lo que necesitas del objeto
+  const slotsApi = data?.slots ?? [];
+  const suggestedBarber = data?.suggestedBarber ?? null;
 
   const timeSlots: string[] = useMemo(
     () =>
-      Array.isArray(slotsApi) && slotsApi.length
-        ? slotsApi.map((s: any) => {
+      slotsApi.length
+        ? slotsApi.map((s) => {
           const left = (s.startISO ?? "").trim();
           const right = (s.endISO ?? "").trim();
           return right ? `${left} - ${right}` : left;
@@ -256,6 +273,7 @@ const handleBackAndRefresh = async () => {
         : [],
     [slotsApi]
   );
+
 
   useEffect(() => {
     if (enableSlotsQuery) refetchSlots();
@@ -276,7 +294,7 @@ const handleBackAndRefresh = async () => {
     setShowCalendar(false);
     setSelectedTimeSlot("");
     setSelectedClient(null);
-    setSelectedBarber(null);
+    setSelectedBarber(undefined);
     setQClient("");
   };
 
@@ -288,7 +306,7 @@ const handleBackAndRefresh = async () => {
 
   const canProceed =
     (step === 1 && selectedServices.length > 0) ||
-    (step === 2 && (isBarber ? selectedClient !== null : selectedBarber !== null)) ||
+    (step === 2 && (isBarber ? selectedClient !== null : selectedBarber !== undefined)) ||
     (step === 3 && selectedDate && selectedTimeSlot) ||
     step === 4;
 
@@ -308,11 +326,11 @@ const handleBackAndRefresh = async () => {
       if (isBarber) payload.client_id = selectedClient; // 👈 sin cambios
       else payload.barber_id = selectedBarber;          // 👈 sin cambios
 
-     
+
 
       const response = await createAppointment(payload);
       console.log("[createAppointment][success]:", response.data ?? response);
-       setShowSuccess(true);
+      setShowSuccess(true);
       // feedback / navegación
       // feedback / navegación
     } catch (e) {
@@ -369,8 +387,8 @@ const handleBackAndRefresh = async () => {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Agendar cita</Text>
-          <Pressable onPress={() => {  router.back(); resetFlow();}} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Cerrar">
-       
+          <Pressable onPress={() => { router.back(); resetFlow(); }} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Cerrar">
+
             <Text style={{ fontSize: 18, color: COLORS.muted }}>×</Text>
           </Pressable>
         </View>
@@ -536,39 +554,70 @@ const handleBackAndRefresh = async () => {
             ) : (
               <View style={{ gap: 12 }}>
                 {loadingBarbers && <Loader text="Cargando barberos..." />}
-                {!loadingBarbers &&
-                  barbers.map((b) => {
-                    const selected = selectedBarber === b.id;
-                    const initials = b.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("");
-                    return (
-                      <Pressable
-                        key={b.id}
-                        onPress={() => setSelectedBarber(b.id)}
-                        style={({ pressed }) => [
-                          styles.card,
-                          {
-                            borderColor: selected ? COLORS.brand : COLORS.border,
-                            backgroundColor: selected ? "#F9FAFB" : "#FFFFFF",
-                            opacity: pressed ? 0.9 : 1,
-                          },
-                        ]}
-                      >
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-                          <View style={styles.avatar}>
-                            <Text style={{ color: COLORS.muted, fontWeight: "800" }}>{initials}</Text>
+                {!loadingBarbers && (
+                  <>
+                    {/* Lista de barberos */}
+                    {barbers.map((b) => {
+                      const selected = selectedBarber === b.id;
+                      const initials = b.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("");
+                      return (
+                        <Pressable
+                          key={b.id}
+                          onPress={() => setSelectedBarber(b.id)}
+                          style={({ pressed }) => [
+                            styles.card,
+                            {
+                              borderColor: selected ? COLORS.brand : COLORS.border,
+                              backgroundColor: selected ? "#F9FAFB" : "#FFFFFF",
+                              opacity: pressed ? 0.9 : 1,
+                            },
+                          ]}
+                        >
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+                            <View style={styles.avatar}>
+                              <Text style={{ color: COLORS.muted, fontWeight: "800" }}>{initials}</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.cardTitle}>{b.name}</Text>
+                              {"rating" in b && b.rating != null && (
+                                <Text style={styles.cardMeta}>★ {b.rating}</Text>
+                              )}
+                            </View>
                           </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.cardTitle}>{b.name}</Text>
-                            {"rating" in b && b.rating != null && <Text style={styles.cardMeta}>★ {b.rating}</Text>}
-                          </View>
+                        </Pressable>
+                      );
+                    })}
+
+                    {/* Paso fijo: Sin preferencia */}
+                    <Pressable
+                      key="no-preference"
+                      onPress={() => setSelectedBarber(null)}
+                      style={({ pressed }) => [
+                        styles.card,
+                        {
+                          borderColor: selectedBarber === null ? COLORS.brand : COLORS.border,
+                          backgroundColor: selectedBarber === null ? "#F9FAFB" : "#FFFFFF",
+                          opacity: pressed ? 0.9 : 1,
+                        },
+                      ]}
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+                        <View style={styles.avatar}>
+                          <Text style={{ color: COLORS.muted, fontWeight: "800" }}>∅</Text>
                         </View>
-                      </Pressable>
-                    );
-                  })}
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.cardTitle}>Sin preferencia</Text>
+                          <Text style={styles.cardMeta}>Cualquier barbero disponible</Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  </>
+                )}
               </View>
+
             ))}
 
           {/* Paso 3: Fecha (campo + calendario) y hora */}
@@ -619,51 +668,58 @@ const handleBackAndRefresh = async () => {
               </View>
 
               {/* Horarios */}
-             <View>
-  <Text style={styles.sectionTitle}>Selecciona la hora</Text>
+              <View>
+                <Text style={styles.sectionTitle}>Selecciona la hora</Text>
 
-  {loadingSlots && selectedDate && (
-    <Text style={{ color: COLORS.muted, marginBottom: 8 }}>Cargando horarios…</Text>
-  )}
+                {loadingSlots && selectedDate && (
+                  <Text style={{ color: COLORS.muted, marginBottom: 8 }}>Cargando horarios…</Text>
+                )}
 
-  {(!timeSlots.length && !selectedDate) ? (
-    <Text style={{ color: COLORS.muted, marginTop: 4, textAlign: "center", justifyContent: "center" }}>
-      No hay horarios para mostrar
-    </Text>
-  ) : (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-      {timeSlots.map((slot, idx) => {
-        const active = selectedTimeSlot === slot;
-        return (
-          <Pressable
-            key={`${slot}-${idx}`}
-            onPress={() => setSelectedTimeSlot(slot)}
-            disabled={!!loadingSlots || !selectedDate}
-            style={({ pressed }) => [
-              styles.slot,
-              {
-                width: "48%",
-                borderColor: active ? COLORS.brand : COLORS.border,
-                backgroundColor: active ? COLORS.brand : "#FFFFFF",
-                opacity: pressed ? 0.9 : loadingSlots ? 0.6 : 1,
-              },
-            ]}
-          >
-            <Text style={{ fontSize: 13, fontWeight: "700", color: active ? "#FFFFFF" : COLORS.text }}>
-              {slotLabelFromRaw(slot)}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  )}
+                {(!timeSlots.length && !selectedDate) ? (
+                  <Text style={{ color: COLORS.muted, marginTop: 4, textAlign: "center", justifyContent: "center" }}>
+                    No hay horarios para mostrar
+                  </Text>
+                ) : (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+                    {timeSlots.map((slot, idx) => {
+                      const active = selectedTimeSlot === slot;
+                      return (
+                        <Pressable
+                          key={`${slot}-${idx}`}
+                          onPress={() => {
+                            setSelectedTimeSlot(slot);
+                            if (!isBarber && selectedBarber === null && suggestedBarber != null) {
+                              setSelectedBarber(suggestedBarber);
+                            }
+                          }}
+                          disabled={!!loadingSlots || !selectedDate}
+                          style={({ pressed }) => [
+                            styles.slot,
+                            {
+                              width: "48%",
+                              borderColor: active ? COLORS.brand : COLORS.border,
+                              backgroundColor: active ? COLORS.brand : "#FFFFFF",
+                              opacity: pressed ? 0.9 : loadingSlots ? 0.6 : 1,
+                            },
+                          ]}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: "700", color: active ? "#FFFFFF" : COLORS.text }}>
+                            {slotLabelFromRaw(slot)}
 
-  {!!slotsError && selectedDate && (
-    <Text style={{ color: "#b91c1c", marginTop: 4 }}>
-      No fue posible cargar los horarios disponibles o el barbero no trabaja ese día.
-    </Text>
-  )}
-</View>
+                     
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {!!slotsError && selectedDate && (
+                  <Text style={{ color: "#b91c1c", marginTop: 4 }}>
+                    No fue posible cargar los horarios disponibles o el barbero no trabaja ese día.
+                  </Text>
+                )}
+              </View>
 
             </View>
           )}
@@ -764,7 +820,7 @@ const handleBackAndRefresh = async () => {
           </Pressable>
         </View>
       </Animated.View>
-           {/*modal con animaciones*/}
+      {/*modal con animaciones*/}
       <Modal visible={showSuccess} transparent animationType="fade" statusBarTranslucent>
         <View style={styles.modalBackdrop}>
           {/* overflow: 'hidden' para que la barra respete EXACTAMENTE el borde redondeado */}
