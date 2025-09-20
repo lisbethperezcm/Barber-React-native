@@ -72,7 +72,7 @@ export default function Notificaciones() {
           </Text>
           {item.read_at === null ? <View style={styles.unreadDot} /> : null}
         </View>
-        <Text style={styles.cardMessage} numberOfLines={2}>
+        <Text style={styles.cardMessage} numberOfLines={3}>
           {item.body}
         </Text>
         <Text style={styles.cardTime}>{getTimeAgo(item.created_at)}</Text>
