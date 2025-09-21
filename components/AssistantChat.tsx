@@ -275,7 +275,7 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
         : [],
     [servicesApi]
   );
-
+// Barberos
   const { data: barbersApi = [], isFetching: loadingBarbers } = useBarbers({ enabled: step === "selectBarber" });
   const barbers = useMemo(
     () =>
