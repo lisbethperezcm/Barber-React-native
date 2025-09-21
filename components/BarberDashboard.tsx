@@ -2,9 +2,10 @@
 import { AuthContext } from "@/assets/src/context/AuthContext";
 import type { NextAppointment } from "@/assets/src/features/reports/useBarberSummary";
 import { useBarberSummary } from "@/assets/src/features/reports/useBarberSummary";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React, { useContext } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useContext, useEffect } from "react";
+import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 /* ===================== Helpers ===================== */
 function formatTime(hms: string): string {
@@ -52,7 +53,25 @@ export default function BarberDashboard({ styles }: { styles?: any }) {
   const { userName } = useContext(AuthContext);
 
   const userFirstName = ((userName ?? "").trim().split(/\s+/)[0]) || "";
-  const { data: summary, isLoading } = useBarberSummary(true);
+  const { data: summary, isLoading, refetch } = useBarberSummary(true);
+
+  // 🔄 Refetch al enfocar la pantalla (multiplataforma)
+  useFocusEffect(
+    useCallback(() => {
+      refetch?.();
+      return () => {};
+    }, [refetch])
+  );
+
+  // 🔄 Refetch al volver del background (multiplataforma)
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        refetch?.();
+      }
+    });
+    return () => sub.remove();
+  }, [refetch]);
 
   return (
     <ScrollView
@@ -122,9 +141,10 @@ export default function BarberDashboard({ styles }: { styles?: any }) {
           <View style={s.quickIcon}><Text>📅</Text></View>
           <Text style={s.quickText}>Citas</Text>
         </Pressable>
-        <Pressable style={styles.quickItem} onPress={() => router.push("/(tabs)/perfil")}>
+        {/* 🔧 Fix: antes usaba styles.quickItem / styles.quickText */}
+        <Pressable style={s.quickItem} onPress={() => router.push("/(tabs)/perfil")}>
           <Text style={{ fontSize: 22 }}>⭐</Text>
-          <Text style={styles.quickText}>Evaluaciones</Text>
+          <Text style={s.quickText}>Evaluaciones</Text>
         </Pressable>
       </View>
 
@@ -285,7 +305,6 @@ const s = StyleSheet.create({
   },
   apptRightCol: {
     alignItems: "center",
-
     minWidth: 90,
     justifyContent: "center"
   },

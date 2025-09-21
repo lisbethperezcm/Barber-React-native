@@ -149,7 +149,11 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
 
   // Mensajes
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: "¡Hola! Soy tu asistente de Vip Stylist.", isBot: true },
+    {
+      id: 1,
+      text: "👋 ¡Hola! Soy tu asistente de VIP Stylist. Estoy aquí para ayudarte a reservar y gestionar tus citas fácilmente. ¿Quieres que agendemos tu próxima visita?",
+      isBot: true
+    },
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -271,7 +275,7 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
         : [],
     [servicesApi]
   );
-
+// Barberos
   const { data: barbersApi = [], isFetching: loadingBarbers } = useBarbers({ enabled: step === "selectBarber" });
   const barbers = useMemo(
     () =>
@@ -440,81 +444,81 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
     pushBot(msg);
   }
 
- async function handleConfirm(userText: string) {
-  const ok = /\b(s[ií]|si|yes|ok|okay|confirmo|claro|vale|de acuerdo|correcto|afirmativo|perfecto)\b/i.test(userText);
-  const no = /\b(no|nop|nunca|negativo|rechazo|cancelar|no quiero)\b/i.test(userText);
+  async function handleConfirm(userText: string) {
+    const ok = /\b(s[ií]|si|yes|ok|okay|confirmo|claro|vale|de acuerdo|correcto|afirmativo|perfecto)\b/i.test(userText);
+    const no = /\b(no|nop|nunca|negativo|rechazo|cancelar|no quiero)\b/i.test(userText);
 
-  // 1) Rechazo explícito
-  if (no) {
-    pushBot(await aiSay({
-      text: userText,
-      step: "confirm",
-      system_hint: "Perfecto, no confirmo. Puedes indicar otra fecha",
-    }));
-    setStep("pickDate");
-    return;
+    // 1) Rechazo explícito
+    if (no) {
+      pushBot(await aiSay({
+        text: userText,
+        step: "confirm",
+        system_hint: "Perfecto, no confirmo. Puedes indicar otra fecha",
+      }));
+      setStep("pickDate");
+      return;
+    }
+
+    // 2) Respuesta ambigua (ni sí/ok ni no)
+    if (!ok) {
+      pushBot("No entendí tu respuesta. ¿Deseas confirmar la cita? Responde con “sí” o “no”.");
+      // Nos quedamos en el paso de confirmación
+      setStep("confirm");
+      return;
+    }
+
+    // 3) Confirmación explícita
+    if (!ctx.barber_id || !ctx.appointment_date || !ctx.chosen_slot) {
+      pushBot("Falta información para crear la cita. Indica una fecha");
+      setStep("pickDate");
+      return;
+    }
+
+    const startSec = withSeconds(ctx.chosen_slot.start_time);
+    const endSec = withSeconds(ctx.chosen_slot.end_time);
+
+    const startSecForm = to12h(ctx.chosen_slot.start_time);
+    const endSecForm = to12h(ctx.chosen_slot.end_time);
+
+    const payload = {
+      barber_id: ctx.barber_id,
+      appointment_date: ctx.appointment_date,
+      start_time: startSec,
+      end_time: endSec,
+      services: ctx.service_ids,
+    };
+
+    try {
+      await createAppointment(payload as any);
+      pushBot(await aiSay({
+        text: userText,
+        step: "done",
+        system_hint: `¡Cita creada para ${ctx.appointment_date} de ${startSecForm} a ${endSecForm}! ¿Deseas algo más?`,
+        context: {
+          service_names: ctx.service_names,
+          barber_name: ctx.barber_name,
+          appointment_date: ctx.appointment_date,
+          start_time: startSecForm,
+          end_time: endSecForm,
+        },
+      }));
+      setStep("done");
+    } catch {
+      pushBot(await aiSay({
+        text: userText,
+        step: "confirm",
+        system_hint: "Hubo un problema creando la cita. Intenta nuevamente u ofrece otra fecha.",
+        context: {
+          service_names: ctx.service_names,
+          barber_name: ctx.barber_name,
+          appointment_date: ctx.appointment_date,
+          start_time: startSecForm,
+          end_time: endSecForm,
+        },
+      }));
+      setStep("pickDate");
+    }
   }
-
-  // 2) Respuesta ambigua (ni sí/ok ni no)
-  if (!ok) {
-    pushBot("No entendí tu respuesta. ¿Deseas confirmar la cita? Responde con “sí” o “no”.");
-    // Nos quedamos en el paso de confirmación
-    setStep("confirm");
-    return;
-  }
-
-  // 3) Confirmación explícita
-  if (!ctx.barber_id || !ctx.appointment_date || !ctx.chosen_slot) {
-    pushBot("Falta información para crear la cita. Indica una fecha");
-    setStep("pickDate");
-    return;
-  }
-
-  const startSec = withSeconds(ctx.chosen_slot.start_time);
-  const endSec = withSeconds(ctx.chosen_slot.end_time);
-
-  const startSecForm = to12h(ctx.chosen_slot.start_time);
-  const endSecForm = to12h(ctx.chosen_slot.end_time);
-
-  const payload = {
-    barber_id: ctx.barber_id,
-    appointment_date: ctx.appointment_date,
-    start_time: startSec,
-    end_time: endSec,
-    services: ctx.service_ids,
-  };
-
-  try {
-    await createAppointment(payload as any);
-    pushBot(await aiSay({
-      text: userText,
-      step: "done",
-      system_hint: `¡Cita creada para ${ctx.appointment_date} de ${startSecForm} a ${endSecForm}! ¿Deseas algo más?`,
-      context: {
-        service_names: ctx.service_names,
-        barber_name: ctx.barber_name,
-        appointment_date: ctx.appointment_date,
-        start_time: startSecForm,
-        end_time: endSecForm,
-      },
-    }));
-    setStep("done");
-  } catch {
-    pushBot(await aiSay({
-      text: userText,
-      step: "confirm",
-      system_hint: "Hubo un problema creando la cita. Intenta nuevamente u ofrece otra fecha.",
-      context: {
-        service_names: ctx.service_names,
-        barber_name: ctx.barber_name,
-        appointment_date: ctx.appointment_date,
-        start_time: startSecForm,
-        end_time: endSecForm,
-      },
-    }));
-    setStep("pickDate");
-  }
-}
 
   // -------- Acciones para chips --------
   const toggleService = (id: number) => {
@@ -591,8 +595,8 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
         pushBot(await aiSay({
           text: txt,
           step: "intro",
-          system_hint: "¿Deseas agendar otra reserva? no indiques ninguna informacion anterior (sí/no)",
-          context:"",
+          system_hint: "¿Deseas agendar otra reserva? (sí/no)",
+          context: "no indicar informacion adiccional ni solicitud",
         }));
         setStep("intro");
         setCtx({ service_ids: [], total_duration: 0 });
