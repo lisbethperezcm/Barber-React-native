@@ -1,6 +1,6 @@
 // app/(booking)/new.tsx
-import { Stack, useRouter } from "expo-router";
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -118,8 +118,8 @@ export default function New() {
   // ===== Estado base =====
   const [step, setStep] = useState(1);
   const [selectedServices, setSelectedServices] = useState<number[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>(""); // ⬅️ vacío hasta que elijas en el calendario
-  const [showCalendar, setShowCalendar] = useState(false);       // ⬅️ muestra/oculta calendario
+  const [selectedDate, setSelectedDate] = useState<string>(""); // 
+  const [showCalendar, setShowCalendar] = useState(false);       //muestra/oculta calendario
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("");
   const { start, end } = extractStartEndRaw(selectedTimeSlot);
   const [selectedClient, setSelectedClient] = useState<number | string | null>(null);
@@ -256,7 +256,7 @@ export default function New() {
   } = useAvailableSlots(queryParams1, { enabled: enableSlotsQuery });
 
   console.log(">> Slots data raw:", data);
-  
+  console.log(">> Slots error:", slotsError);
 
   // 🔹 Ahora extraes lo que necesitas del objeto
   const slotsApi = data?.slots ?? [];
@@ -274,7 +274,19 @@ export default function New() {
     [slotsApi]
   );
 
-
+useFocusEffect(
+  useCallback(() => {
+    // onFocus
+    return () => {
+      // onBlur (sale de la pantalla)
+      // 👇 Limpia estado de la reserva y aborta queries de esta pantalla
+      queryClient.cancelQueries({ queryKey: ["available-slots"] });
+      setSelectedTimeSlot("");
+      setShowCalendar(false);
+  resetFlow();
+    };
+  }, [queryClient])
+);
   useEffect(() => {
     if (enableSlotsQuery) refetchSlots();
   }, [enableSlotsQuery, selectedDate, selectedBarber, totalMinutes, refetchSlots]);
@@ -714,7 +726,7 @@ export default function New() {
                   </View>
                 )}
 
-                {!!slotsError && selectedDate && (
+                {!loadingSlots && !slotsError && selectedDate && !timeSlots.length && (
                   <Text style={{ color: "#b91c1c", marginTop: 4 }}>
                     No fue posible cargar los horarios disponibles o el barbero no trabaja ese día.
                   </Text>
