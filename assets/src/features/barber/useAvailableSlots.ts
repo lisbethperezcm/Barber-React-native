@@ -4,14 +4,19 @@ import * as SecureStore from "expo-secure-store";
 import { api } from "../../lib/api";
 
 type ApiSlot = {
-  start_time: string; // ISO
-  end_time: string;   // ISO
+  start_time: string; // ISO o HH:mm según tu backend
+  end_time: string;   // ISO o HH:mm
 };
 
 export type Slot = {
   startISO: string;
   endISO: string;
   durationMin: number;
+};
+
+export type AvailableSlotsResult = {
+  slots: Slot[];
+  suggestedBarber: number | null;
 };
 
 function diffMinutes(startISO: string, endISO: string) {
@@ -30,28 +35,36 @@ function normalize(s: ApiSlot): Slot {
 }
 
 export function useAvailableSlots(
-  params: { barberId: number | null; date: string; duration: number },
+  params: { barberId?: number | null; date: string; duration: number },
   options?: { enabled?: boolean }
 ) {
   const { barberId, date, duration } = params;
 
-  return useQuery({
+  return useQuery<AvailableSlotsResult>({
     queryKey: ["availableSlots", barberId, date, duration],
-    queryFn: async (): Promise<Slot[]> => {
+    queryFn: async (): Promise<AvailableSlotsResult> => {
       const token = await SecureStore.getItemAsync("accessToken");
-      if (!token) return [];
+      if (!token) {
+        return { slots: [], suggestedBarber: null };
+      }
 
-      const { data } = await api.post<{ data?: ApiSlot[] }>(
+      // Payload: solo manda barber_id si es numérico
+      const payload: Record<string, any> = { date, duration };
+      if (typeof barberId === "number") {
+        payload.barber_id = barberId;
+      }
+
+      const { data } = await api.post(
         "/barbers/availableSlots",
-        {
-          barber_id: barberId,
-          date,
-          duration,
-        }
+        payload
       );
 
-      const list = (data as any)?.data ?? (data as any) ?? [];
-      return (list as ApiSlot[]).map(normalize);
+      const rawList = (data as any)?.data ?? (data as any) ?? [];
+      const suggestedBarber: number | null = (data as any)?.suggested_barber ?? null;
+
+      const slots = (Array.isArray(rawList) ? rawList : []).map(normalize);
+
+      return { slots, suggestedBarber };
     },
     enabled: Boolean(options?.enabled && date && duration),
     staleTime: 60_000,
