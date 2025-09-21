@@ -196,6 +196,16 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
   const pushBot = (text: string) => setMessages((p) => [...p, { id: Date.now() + Math.random(), isBot: true, text }]);
   const pushUser = (text: string) => setMessages((p) => [...p, { id: Date.now() + Math.random(), isBot: false, text }]);
 
+
+  // --- Echos de selección del usuario ---
+const echoUser = (text: string) =>
+  setMessages((p) => [...p, { id: Date.now() + Math.random(), isBot: false, text }]);
+
+const formatServices = (names: string[] = []) =>
+  names.length ? `Servicios: ${names.join(" · ")}` : "Servicios seleccionados";
+
+const formatSlot = (s: Slot) => `${to12h(s.start_time)} – ${to12h(s.end_time)}`;
+
   // ================ IA ================
   // { text, meta: { step, system_hint, context } }
   async function aiSay(opts: { text: string; step: Step; system_hint: string; context?: any }) {
@@ -310,17 +320,17 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
 
   // -------- Handlers por paso (texto) --------
   async function handleIntro(userText: string) {
-    const yes = /\b(s[ií]|si|yes|ok|claro|dale|va)\b/i.test(userText);
+    const yes = /\b(s[ií]|si|yes|ok|okay|confirmo|claro|vale|de acuerdo|correcto|afirmativo|perfecto|dale|va)\b/i.test(userText);
     const no = /\b(no|luego|despu[eé]s|otro d[ií]a)\b/i.test(userText);
-    if (no) { pushBot("Perfecto. Gracias por preferirnos!."); return; }
-    if (!yes) { pushBot("¿Deseas agendar ahora? Responde “sí” para continuar."); return; }
+   if (no) { pushBot("Perfecto. Cuando quieras agendar, escribe “agendar”."); setStep("intro"); return; }
+if (!yes) { pushBot("¿Deseas agendar ahora? Responde “sí” para continuar o “no” para salir."); return; }
 
     setStep("selectServices");
 
     const msg = await aiSay({
       text: userText,
       step: "selectServices",
-      system_hint: "Selecciona tus servicios tocando los chips y luego pulsa Continuar.",
+      system_hint: "Selecciona tus servicios tocando las opciones y luego pulsa Continuar.",
     });
     pushBot(msg);
   }
@@ -331,14 +341,14 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
     const indexToId = (n: number) => display[n - 1]?.id;
 
     const tokens = userText.split(/[,\s]+/).map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0);
-    if (!tokens.length) { pushBot("Usa los chips para elegir servicios y pulsa Continuar."); return; }
+    if (!tokens.length) { pushBot("Usa las opciones para elegir servicios y pulsa Continuar."); return; }
 
     const ids: number[] = [];
     for (const n of tokens) {
       if (services.some((s) => s.id === n)) ids.push(n);
       else { const maybeId = indexToId(n); if (maybeId) ids.push(maybeId); }
     }
-    if (!ids.length) { pushBot("No reconocí esos servicios. Toca los chips para seleccionar."); return; }
+    if (!ids.length) { pushBot("No reconocí esos servicios. Toca las opciones para seleccionar."); return; }
 
     const duration = ids.reduce((acc, id) => acc + (services.find((s) => s.id === id)?.durationMin || 0), 0);
     const names = ids.map(id => services.find(s => s.id === id)?.name).filter(Boolean) as string[];
@@ -346,11 +356,11 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
     setCtx((prev) => ({ ...prev, service_ids: ids, service_names: names, total_duration: duration }));
 
     setStep("selectBarber");
-
+   
     const msg = await aiSay({
       text: userText,
       step: "selectBarber",
-      system_hint: "Elige un barbero tocando un chip.",
+      system_hint: "Elige un barbero Toca las opciones.",
       context: { service_count: ids.length, total_duration: duration, service_names: names },
     });
     pushBot(msg);
@@ -361,7 +371,7 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
     const opt = parseOptionNumber(userText);
     const picked = typeof opt === "number" ? barbers[opt - 1] : undefined;
     if (!picked) {
-      pushBot("Toca un chip para seleccionar al barbero.");
+      pushBot("Toca las opciones para seleccionar al barbero.");
       return;
     }
 
@@ -389,6 +399,7 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
       return;
     }
 
+    pushUser(`Fecha: ${date}`);
     const nextCtx = { ...ctx, appointment_date: date };
     setCtx(nextCtx);
 
@@ -415,7 +426,7 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
     }
 
     setCtx({ ...nextCtx, slots: list });
-    pushBot(`Horarios disponibles listos para ${date}. Toca un chip para elegir tu horario.`);
+    pushBot(`Horarios disponibles listos para ${date}. Toca una opción para elegir tu horario.`);
     setStep("viewSlots");
   }
 
@@ -423,11 +434,13 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
     // Compatibilidad por texto: sin lista visible, guiamos a chips
     const opt = parseOptionNumber(userText);
     const slot = typeof opt === "number" ? ctx.slots?.[opt - 1] : undefined;
-    if (!slot) { pushBot("Toca un chip para elegir el horario."); return; }
+    if (!slot) { pushBot("Toca una opción para elegir el horario."); return; }
 
     setCtx((prev) => ({ ...prev, chosen_slot: slot }));
     setStep("confirm");
 
+       const startSecForm = to12h(slot.start_time);
+    const endSecForm = to12h(slot.end_time);
     const msg = await aiSay({
       text: userText,
       step: "confirm",
@@ -437,8 +450,8 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
         service_names: ctx.service_names, // ← solo nombres
         barber_name: ctx.barber_name,     // ← solo nombre
         date: ctx.appointment_date,
-        start_time: to12h(slot.start_time),
-        end_time: to12h(slot.end_time),
+        start_time: startSecForm,
+        end_time: endSecForm,
       },
     });
     pushBot(msg);
@@ -453,7 +466,7 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
       pushBot(await aiSay({
         text: userText,
         step: "confirm",
-        system_hint: "Perfecto, no confirmo. Puedes indicar otra fecha",
+        system_hint: "Perfecto, no confirmo. Puedes indicar otra fecha para la cita.",
       }));
       setStep("pickDate");
       return;
@@ -487,13 +500,14 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
       end_time: endSec,
       services: ctx.service_ids,
     };
+    console.log("Creating appointment with payload:", payload);
 
     try {
       await createAppointment(payload as any);
       pushBot(await aiSay({
         text: userText,
         step: "done",
-        system_hint: `¡Cita creada para ${ctx.appointment_date} de ${startSecForm} a ${endSecForm}! ¿Deseas algo más?`,
+        system_hint: `¡Cita creada para ${ctx.appointment_date} de ${startSecForm} a ${endSecForm}! ¿Deseas agendar otra reserva? (sí/no)`,
         context: {
           service_names: ctx.service_names,
           barber_name: ctx.barber_name,
@@ -501,9 +515,12 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
           start_time: startSecForm,
           end_time: endSecForm,
         },
+        
       }));
+
       setStep("done");
-    } catch {
+    } catch (error) {
+      console.error("Error creating appointment:", error);
       pushBot(await aiSay({
         text: userText,
         step: "confirm",
@@ -519,6 +536,32 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
       setStep("pickDate");
     }
   }
+
+
+
+  async function handleDone(userText: string) {
+  const yes = /\b(s[ií]|si|yes|ok|okay|claro|vale|de acuerdo|correcto|afirmativo|perfecto|dale|va)\b/i.test(userText);
+  const no  = /\b(no|nop|nunca|negativo|rechazo|cancelar|no quiero|gracias)\b/i.test(userText);
+
+  if (yes) {
+    // Empezar otra reserva SIN volver a pedir "¿quieres agendar?"
+    setCtx({ service_ids: [], total_duration: 0 });
+    setStep("selectServices");
+    pushBot("Perfecto, elige tus servicios para la nueva reserva:");
+    return;
+  }
+
+  if (no) {
+    pushBot("¡Listo! Gracias por preferirnos. Si necesitas algo más, escribe “agendar”.");
+    // Opcional: regresar a intro “en reposo”
+    setStep("intro");
+    return;
+  }
+
+  // Ambiguo
+  pushBot("¿Deseas agendar otra reserva? Responde “sí” para empezar o “no” para salir.");
+  setStep("done");
+}
 
   // -------- Acciones para chips --------
   const toggleService = (id: number) => {
@@ -539,19 +582,22 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
 
     const names = tempServiceIds.map(id => services.find(s => s.id === id)?.name).filter(Boolean) as string[];
 
+    echoUser(formatServices(names));
     setCtx((prev) => ({ ...prev, service_ids: tempServiceIds, service_names: names, total_duration: duration }));
     setStep("selectBarber");
 
     const msg = await aiSay({
       text: "",
       step: "selectBarber",
-      system_hint: "Perfecto, elige un barbero tocando un chip.",
+      system_hint: "Perfecto, elige un barbero tocando la opción.",
       context: { service_count: tempServiceIds.length, total_duration: duration, service_names: names },
     });
     pushBot(msg);
   };
 
   const pickBarberChip = async (id: number, name?: string) => {
+
+    if (name) echoUser(`Barbero: ${name}`); 
     setCtx((prev) => ({ ...prev, barber_id: id, barber_name: name }));
     setStep("pickDate");
     const msg = await aiSay({
@@ -566,6 +612,9 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
   const pickSlotChip = async (slot: Slot) => {
     setCtx((prev) => ({ ...prev, chosen_slot: slot }));
     setStep("confirm");
+
+    const startSecForm = to12h(slot.start_time);
+    const endSecForm = to12h(slot.end_time);
     const msg = await aiSay({
       text: "",
       step: "confirm",
@@ -575,8 +624,8 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
         service_names: ctx.service_names, // ← nombres
         barber_name: ctx.barber_name,     // ← nombre
         date: ctx.appointment_date,
-        start_time: to12h(slot.start_time),
-        end_time: to12h(slot.end_time),
+        start_time: startSecForm,
+        end_time: endSecForm,
       },
     });
     pushBot(msg);
@@ -591,16 +640,7 @@ export default function AssistantChat({ isOpen, onClose }: AssistantChatProps) {
       case "pickDate": await handlePickDate(txt); break;
       case "viewSlots": await handleViewSlots(txt); break;
       case "confirm": await handleConfirm(txt); break;
-      case "done":
-        pushBot(await aiSay({
-          text: txt,
-          step: "intro",
-          system_hint: "¿Deseas agendar otra reserva? (sí/no)",
-          context: "no indicar informacion adiccional ni solicitud",
-        }));
-        setStep("intro");
-        setCtx({ service_ids: [], total_duration: 0 });
-        break;
+      case "done": await handleDone(txt); break;
     }
   };
 
