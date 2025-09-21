@@ -296,7 +296,7 @@ export default function RescheduleAppointmentSheet({
     Boolean(visible && step === 3 && selectedDate && totalMinutes && hasValidBarberNum);
 
   const {
-    data: slotsApi = [],
+    data,
     isLoading: loadingSlots,
     error: slotsError,
     refetch: refetchSlots,
@@ -304,6 +304,11 @@ export default function RescheduleAppointmentSheet({
     { barberId: safeBarberIdNum, date: selectedDate, duration: totalMinutes },
     { enabled: !!enableSlotsQuery }
   );
+
+    console.log(data);
+  // 🔹 Ahora extraes lo que necesitas del objeto
+  const slotsApi = data?.slots ?? [];
+console.log("slotsApi", slotsApi);
 
   const timeSlots: string[] = useMemo(
     () =>

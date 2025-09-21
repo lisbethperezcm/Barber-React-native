@@ -1,9 +1,10 @@
 import { AuthContext } from "@/assets/src/context/AuthContext";
 import api from "@/assets/src/lib/http";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import React, { useContext, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, AppState, Pressable, ScrollView, Text, View } from "react-native";
 
 /** Utils muy pequeños para formateo y cálculos sin librerías extra */
 function formatDateISOToLong(dateISO?: string) {
@@ -67,64 +68,74 @@ export default function ClientDashboard({ styles }: { styles: any }) {
   const [nextAppointment, setNextAppointment] = useState<NextAppointment | null>(null);
   const [careTips, setCareTips] = useState<CareTip[]>([]);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadDashboard() {
-      setLoading(true);
-      setError(null);
-      try {
-        // 1) Obtener clientId desde SecureStore.
-        const raw = await SecureStore.getItemAsync("client");
-        if (!raw) {
-          throw new Error("No se encontró el cliente en el dispositivo.");
-        }
-
-        // Puede venir como JSON { id: number, ... } o como string con el id.
-        let clientId: string | number | undefined;
-        try {
-          const parsed = JSON.parse(raw);
-          clientId = parsed?.id ?? parsed?.client_id ?? parsed; // fallback si guardaste el objeto completo
-        } catch {
-          clientId = raw; // si era un string simple
-        }
-
-        if (clientId === undefined || clientId === null || `${clientId}`.trim() === "") {
-          throw new Error("clientId inválido o vacío.");
-        }
-
-        // 2) Llamar a tu endpoint (usa tu instancia axios `api`).
-        const res = await api.get(`/reports/client-summary/${clientId}`);
-
-        // 3) Normalizar payload (a veces viene en `original`, otras en `data`).
-        const payload =
-          res?.data?.original ??
-          res?.data?.data ??
-          res?.data ??
-          {};
-
-        const appointment = payload?.next_appointment ?? null;
-        const tips = Array.isArray(payload?.care_tips) ? payload.care_tips : [];
-
-        if (!isMounted) return;
-        setNextAppointment(appointment);
-        setCareTips(tips);
-      } catch (e: any) {
-        if (!isMounted) return;
-        setError(e?.message || "Error al cargar el dashboard.");
-      } finally {
-        if (isMounted) setLoading(false);
+  // ✅ Función reutilizable para cargar datos (se usa en focus + foreground + primer render)
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // 1) Obtener clientId desde SecureStore.
+      const raw = await SecureStore.getItemAsync("client");
+      if (!raw) {
+        throw new Error("No se encontró el cliente en el dispositivo.");
       }
+
+      // Puede venir como JSON { id: number, ... } o como string con el id.
+      let clientId: string | number | undefined;
+      try {
+        const parsed = JSON.parse(raw);
+        clientId = parsed?.id ?? parsed?.client_id ?? parsed; // fallback si guardaste el objeto completo
+      } catch {
+        clientId = raw; // si era un string simple
+      }
+
+      if (clientId === undefined || clientId === null || `${clientId}`.trim() === "") {
+        throw new Error("clientId inválido o vacío.");
+      }
+
+      // 2) Llamar a tu endpoint (usa tu instancia axios `api`).
+      const res = await api.get(`/reports/client-summary/${clientId}`);
+
+      // 3) Normalizar payload (a veces viene en `original`, otras en `data`).
+      const payload =
+        res?.data?.original ??
+        res?.data?.data ??
+        res?.data ??
+        {};
+
+      const appointment = payload?.next_appointment ?? null;
+      const tips = Array.isArray(payload?.care_tips) ? payload.care_tips : [];
+
+      setNextAppointment(appointment);
+      setCareTips(tips);
+    } catch (e: any) {
+      setError(e?.message || "Error al cargar el dashboard.");
+    } finally {
+      setLoading(false);
     }
-
-    // Ejecutar carga
-    loadDashboard();
-
-    // Cleanup
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  // ▶️ Primer render
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  // 🔄 Refetch al enfocar la pantalla (multiplataforma)
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboard();
+      return () => {};
+    }, [loadDashboard])
+  );
+
+  // 🔄 Refetch al volver del background (multiplataforma)
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        loadDashboard();
+      }
+    });
+    return () => sub.remove();
+  }, [loadDashboard]);
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
@@ -201,7 +212,6 @@ export default function ClientDashboard({ styles }: { styles: any }) {
           <Text style={{ fontSize: 22 }}>✂️</Text>
           <Text style={styles.quickText}>Servicios</Text>
         </Pressable>
-       
       </View>
 
       {/* Recomendaciones (dinámicas) */}
