@@ -78,6 +78,11 @@ export default function CitasScreen() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [successVisible, setSuccessVisible] = useState(false);
 
+  // ✅ completar cita
+const [confirmCompleteId, setConfirmCompleteId] = useState<number | null>(null);
+const [completeLoading, setCompleteLoading] = useState(false);
+const [successCompleteVisible, setSuccessCompleteVisible] = useState(false);
+
   // ⬇️ NUEVO: estado para reprogramar
   const [showReschedule, setShowReschedule] = useState(false);
   const [resel, setResel] = useState<null | {
@@ -194,6 +199,26 @@ export default function CitasScreen() {
       setCancelLoading(false);
     }
   }
+
+  // ✅ Completar (PUT) — tatus: 7
+async function completeAppointment(appointmentId: number) {
+  try {
+    setCompleteLoading(true);
+    await api.put(`/appointments/${appointmentId}/status`, { status: 7 }); // 7 = Completada
+    setConfirmCompleteId(null);
+    setSuccessCompleteVisible(true);
+    refetch(); // refresca la lista
+    setTimeout(() => setSuccessCompleteVisible(false), 4000);
+  } catch (err: any) {
+    const msg =
+      err?.response?.data?.message ||
+      err?.message ||
+      "No se pudo completar la cita.";
+    Alert.alert("Error", msg);
+  } finally {
+    setCompleteLoading(false);
+  }
+}
 
   // ⬇️ NUEVO: lista de barberos derivada de las citas (si ya tienes hook propio, úsalo)
   const barbersList = useMemo(() => {
@@ -358,10 +383,10 @@ export default function CitasScreen() {
         <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.3)" }} onPress={() => setActionId(null)} />
 
         <View style={{ backgroundColor: "#fff", padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
-          <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text, marginBottom: 12 }}>
-            Acciones
+          <Text style={{ fontSize: 16, fontWeight: "900", color: COLORS.text, marginBottom: 14 }}>
+            Acciones:
           </Text>
-          <View style={{ gap: 8 }}>
+          <View style={{ paddingBottom:5, gap: 12 }}>
             <Pressable
               onPress={() => {
                 if (actionId == null) return;
@@ -434,6 +459,42 @@ export default function CitasScreen() {
             >
               <Text style={{ color: COLORS.text, fontWeight: "700" }}>Reprogramar</Text>
             </Pressable>
+            <Pressable
+              onPress={() => {
+                /*if (actionId == null) return;
+                const a: any =
+                  actionItem ??
+                  (Array.isArray(data) ? (data as Appointment[]).find(x => x.id === actionId) : null) ??
+                  {};
+                setActionId(null); // cerrar acciones
+                requestAnimationFrame(() => {
+                  openRescheduleFor(a); // abrir modal de reprogramar
+                });*/
+              }}
+              style={({ pressed }) => ({
+                padding: 12,
+                borderRadius: 12,
+                backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
+              })}
+            >
+              <Text style={{ color: COLORS.confirmado, fontWeight: "700" }}>En proceso</Text>
+            </Pressable>
+
+             {/* 🔽 marcar completada */}
+             <Pressable
+              onPress={() => {
+                if (actionId == null) return;
+                setConfirmCompleteId(actionId); // abrir modal de confirmación
+                setActionId(null);     // cerrar acciones
+              }}
+              style={({ pressed }) => ({
+                padding: 12,
+                borderRadius: 12,
+                backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
+              })}
+            >
+              <Text style={{ color: COLORS.completado  , fontWeight: "800" }}>Completar cita</Text>
+            </Pressable>
 
             {/* 🔽 Cancelar → abre confirmación */}
             <Pressable
@@ -450,6 +511,7 @@ export default function CitasScreen() {
             >
               <Text style={{ color: COLORS.danger, fontWeight: "800" }}>Cancelar cita</Text>
             </Pressable>
+            
           </View>
         </View>
       </Modal>
@@ -590,6 +652,142 @@ export default function CitasScreen() {
           </View>
         </View>
       </Modal>
+      {/* Modal de confirmación de COMPLETAR */}
+<Modal
+  visible={confirmCompleteId !== null}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setConfirmCompleteId(null)}
+>
+  <View
+    style={{
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.35)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+    }}
+  >
+    <View
+      style={{
+        backgroundColor: "#fff",
+        width: "100%",
+        borderRadius: 16,
+        padding: 18,
+        alignItems: "center",
+      }}
+    >
+      {/* Ícono de ok dentro de círculo verde suave */}
+      <View
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: "#DCFCE7", // verde suave
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 10,
+        }}
+      >
+        <Ionicons name="checkmark-done-outline" size={28} color={COLORS.completado} />
+      </View>
+
+      <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text, textAlign: "center" }}>
+        ¿Marcar esta cita como completada?
+      </Text>
+
+      <Text style={{ color: COLORS.textMuted, textAlign: "center", marginTop: 4 }}>
+        Esta acción actualizará el estado de la cita a <Text style={{ fontWeight: "700" }}>Completada</Text>.
+      </Text>
+
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 12,
+          justifyContent: "center",
+          marginTop: 14,
+          width: "100%",
+        }}
+      >
+        <Pressable
+          onPress={() => setConfirmCompleteId(null)}
+          style={({ pressed }) => ({
+            paddingVertical: 10,
+            paddingHorizontal: 20,
+            minWidth: 120,
+            alignItems: "center",
+            borderRadius: 12,
+            backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
+            borderWidth: 1,
+            borderColor: COLORS.border,
+          })}
+          disabled={completeLoading}
+        >
+          <Text style={{ fontWeight: "700", color: COLORS.text }}>No</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => confirmCompleteId && completeAppointment(confirmCompleteId)}
+          style={({ pressed }) => ({
+            paddingVertical: 10,
+            paddingHorizontal: 20,
+            minWidth: 120,
+            alignItems: "center",
+            borderRadius: 12,
+            backgroundColor: COLORS.completado,
+            opacity: pressed || completeLoading ? 0.85 : 1,
+          })}
+          disabled={completeLoading}
+        >
+          {completeLoading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={{ fontWeight: "800", color: "#fff" }}>Sí, completar</Text>
+          )}
+        </Pressable>
+      </View>
+    </View>
+  </View>
+</Modal>
+
+{/* ✅ Popup verde de éxito (completada) */}
+<Modal
+  visible={successCompleteVisible}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setSuccessCompleteVisible(false)}
+>
+  <View
+    style={{
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.25)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+    }}
+  >
+    <View
+      style={{
+        backgroundColor: "#fff",
+        width: "100%",
+        borderRadius: 16,
+        padding: 18,
+        alignItems: "center",
+        gap: 8,
+        borderWidth: 2,
+        borderColor: COLORS.completado,
+      }}
+    >
+      <Text style={{ fontSize: 20 }}>✅</Text>
+      <Text
+        style={{ fontSize: 16, fontWeight: "800", color: COLORS.completado }}
+      >
+        Cita marcada como completada
+      </Text>
+    </View>
+  </View>
+</Modal>
+
 
       {/* ⬇️ Modal de reprogramar */}
       {resel && (

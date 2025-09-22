@@ -142,7 +142,7 @@ export default function BarberDashboard({ styles }: { styles?: any }) {
           <Text style={s.quickText}>Citas</Text>
         </Pressable>
         {/* 🔧 Fix: antes usaba styles.quickItem / styles.quickText */}
-        <Pressable style={s.quickItem} onPress={() => router.push("/(tabs)/perfil")}>
+        <Pressable style={s.quickItem} onPress={() => router.push("/(tabs)/reviews")}>
           <Text style={{ fontSize: 22 }}>⭐</Text>
           <Text style={s.quickText}>Evaluaciones</Text>
         </Pressable>
@@ -251,10 +251,10 @@ const s = StyleSheet.create({
   kpiMuted: { color: "#CBD5E1", fontWeight: "600" },
   kpiValue: { color: "#fff", fontWeight: "700", fontSize: 18, marginTop: 2 },
 
-  smallRow: { flexDirection: "row", gap: 12, marginBottom: 16 },
+  smallRow: { flexDirection: "row", gap: 14, marginBottom: 16 },
   smallCard: {
     flex: 1, backgroundColor: COLORS.bg, borderWidth: 1, borderRadius: 14,
-    padding: 14, alignItems: "center", gap: 6,
+    padding: 6, alignItems: "center", gap: 6,
   },
   smallNumber: { fontSize: 18, fontWeight: "800" },
   smallLabel: { color: COLORS.textMuted, fontWeight: "600" },
