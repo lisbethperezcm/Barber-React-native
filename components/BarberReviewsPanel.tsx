@@ -1,56 +1,45 @@
-/*import React, { useMemo } from "react";
-import { FlatList, Text, View } from "react-native";
+// assets/src/components/BarberReviewsPanel.tsx
+import { useBarberReviews } from "@/assets/src/features/reviews/useBarberReviews";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useMemo } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  Text,
+  View,
+} from "react-native";
 
-type Review = {
-  id: number;
-  rating: number;
-  comment: string;
-  createdAt: string;
+const UI = {
+  bg: "#FFFFFF",
+  cardBg: "#F9FAFB",
+  cardBorder: "#E5E7EB",
+  text: "#111827", // negro
+  accent: "#FBBF24", // dorado para estrellas y chip
+  accentSoft: "#FEF3C7", // fondo suave dorado
+  danger: "#991B1B",
+  shadow: {
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  } as const,
 };
 
-// === DATA DUMMY ===
-const DUMMY_REVIEWS: Review[] = [
-  {
-    id: 1,
-    rating: 5,
-    comment: "Excelente servicio, muy puntual.",
-    createdAt: "2025-09-20T14:00:00Z",
-  },
-  {
-    id: 2,
-    rating: 4,
-    comment: "Muy buen corte, volveré.",
-    createdAt: "2025-09-19T10:30:00Z",
-  },
-  {
-    id: 3,
-    rating: 3,
-    comment: "El corte estuvo bien, pero tardó un poco.",
-    createdAt: "2025-09-18T16:15:00Z",
-  },
-  {
-    id: 4,
-    rating: 3,
-    comment: "El corte estuvo bien, pero tardó un poco.",
-    createdAt: "2025-09-18T16:15:00Z",
-  },
-  {
-    id: 5,
-    rating: 3,
-    comment: "El corte estuvo bien, pero tardó un poco.",
-    createdAt: "2025-09-18T16:15:00Z",
-  },
-];
-
 function Stars({ value }: { value: number }) {
-  const v = Math.max(0, Math.min(5, Math.round(value)));
+  const v = Math.max(0, Math.min(5, Math.round(Number(value) || 0)));
   return (
-    <Text style={{ fontSize: 14 }}>
+    <Text style={{ fontSize: 14, color: UI.accent }}>
       {"★".repeat(v)}
-      <Text style={{ color: "#9CA3AF" }}>{"★".repeat(5 - v)}</Text>
+      {/* estrellas vacías → gris */}
+      <Text style={{ color: "#D1D5DB" }}>{"★".repeat(5 - v)}</Text>
     </Text>
   );
 }
+
+
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -61,262 +50,213 @@ function formatDate(iso: string) {
   });
 }
 
-export default function BarberReviewsPanel() {
-  const avg = useMemo(() => {
-    if (!DUMMY_REVIEWS.length) return 0;
-    const sum = DUMMY_REVIEWS.reduce((acc, r) => acc + r.rating, 0);
-    return Math.round((sum / DUMMY_REVIEWS.length) * 10) / 10;
-  }, []);
-
+function EmptyState() {
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff" }}>
-      {/* Cabecera */
-      /*<View style={{ marginBottom: 15 }}>
-        <Text style={{ fontSize: 18, fontWeight: "700", marginBottom:5}}>Mis Evaluaciones</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Stars value={avg} />
-          <Text style={{ color: "#4B5563" }}>
-            {DUMMY_REVIEWS.length ? `${avg} de 5` : "Sin calificaciones"}
-          </Text>
-          <Text style={{ color: "#9CA3AF" }}>
-            · {DUMMY_REVIEWS.length}{" "}
-            {DUMMY_REVIEWS.length === 1 ? "reseña" : "reseñas"}
-          </Text>
-        </View>
+    <View
+      style={{
+        alignItems: "center",
+        paddingVertical: 48,
+        backgroundColor: UI.cardBg,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: UI.cardBorder,
+      }}
+    >
+      <View
+        style={{
+          width: 84,
+          height: 84,
+          borderRadius: 20,
+          backgroundColor: UI.accentSoft,
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 16,
+        }}
+      >
+        <Ionicons name="chatbubbles-outline" size={40} color={UI.accent} />
       </View>
-
-      {/* Lista */
-      /*<FlatList
-        data={DUMMY_REVIEWS}
-        keyExtractor={(it) => String(it.id)}
-        renderItem={({ item }) => (
-          <View
-            style={{
-              backgroundColor: "#F9FAFB",
-              borderRadius: 16,
-              padding: 18,
-              marginBottom: 12,
-              borderWidth: 1,
-              borderColor: "#E5E7EB",
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: "#6B7280" }}>{formatDate(item.createdAt)}</Text>
-              <Stars value={item.rating} />
-            </View>
-            <Text style={{ marginTop: 8 }}>{item.comment}</Text>
-          </View>
-        )}
-      />
+      <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 6, color: UI.text }}>
+        Aún no tienes evaluaciones
+      </Text>
+      <Text
+        style={{
+          color: UI.text,
+          textAlign: "center",
+          paddingHorizontal: 24,
+        }}
+      >
+        Cuando tus clientes califiquen tu servicio, verás aquí sus reseñas y el
+        promedio.
+      </Text>
     </View>
   );
-}*/
+}
 
-//NEW panel 
-import { api } from "@/assets/src/lib/api"; // <- mismo helper que usas en citas
-import { get as secureGet, set as secureSet } from "@/assets/src/lib/secure";
-import * as SecureStore from "expo-secure-store";
-import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Text, View } from "react-native";
-
-type Review = {
-  id: number;
-  rating: number;
-  comment: string | null;
-  client: string;
-  barber: string;
-  appointment_id: number;
-  created_at: string;
-};
-
-function Stars({ value }: { value: number }) {
-  const v = Math.max(0, Math.min(5, Math.round(Number(value) || 0)));
+// Avatar anónimo en blanco y negro
+function InitialAvatar() {
   return (
-    <Text style={{ fontSize: 14, color: "#FBBF24" }}>
-      {"★".repeat(v)}
-      <Text style={{ color: "#E5E7EB" }}>{"★".repeat(5 - v)}</Text>
-    </Text>
+    <View
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: 999,
+        backgroundColor: "#E5E7EB", // gris claro
+        alignItems: "center",
+        justifyContent: "center",
+        marginRight: 10,
+      }}
+    >
+      <Ionicons name="person" size={18} color="#111827" />
+    </View>
   );
 }
 
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString("es-DO", { year: "numeric", month: "short", day: "2-digit" });
-}
-
-/** Intenta resolver barberId como lo haría un módulo maduro: SecureStore -> user JSON -> backend (/me variantes) */
-async function resolveBarberId(): Promise<{ id: string | null; debug: string[] }> {
-  const dbg: string[] = [];
-
-  // 1) claves directas
-  const directKeys = ["barberId", "barber_id", "BARBER_ID"];
-  for (const k of directKeys) {
-    const v = await secureGet(k);
-    dbg.push(`secure:${k}=${v ?? "null"}`);
-    if (v && String(v).trim()) return { id: String(v).trim(), debug: dbg };
-  }
-
-  // 2) objetos de usuario guardados
-  const userKeys = ["user", "currentUser", "auth", "profile"];
-  for (const k of userKeys) {
-    const raw = await secureGet(k);
-    dbg.push(`secure:${k}=${raw ? "json" : "null"}`);
-    if (raw) {
-      try {
-        const u = JSON.parse(raw);
-        const candidate =
-          u?.barber_id ?? u?.barberId ??
-          u?.data?.barber_id ?? u?.data?.barberId ??
-          u?.user?.barber_id ?? u?.user?.barberId ??
-          u?.profile?.barber_id ?? u?.profile?.barberId;
-        if (candidate) return { id: String(candidate), debug: dbg };
-      } catch {
-        dbg.push(`secure:${k}:json-parse-failed`);
-      }
-    }
-  }
-const barber = await SecureStore.getItemAsync("barber");
-  // 3) pedir al backend (distintas rutas comunes)
-  const endpoints = ["/me", "/auth/me", "/user/me"];
-  for (const ep of endpoints) {
-    try {
-      const { data } = await api.get(ep);
-      dbg.push(`GET ${ep}:ok`);
-      const candidate =
-        data?.barber_id ?? data?.barberId ??
-        data?.data?.barber_id ?? data?.data?.barberId ??
-        data?.user?.barber_id ?? data?.user?.barberId;
-      if (candidate) {
-        // Guardamos para futuras cargas rápidas
-        await secureSet("barberId", String(candidate));
-        return { id: String(candidate), debug: dbg };
-      }
-    } catch (e) {
-      dbg.push(`GET ${ep}:fail`);
-    }
-  }
-
-  return { id: null, debug: dbg };
-}
-
 export default function BarberReviewsPanel() {
-  const [items, setItems] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [debug, setDebug] = useState<string[] | null>(null);
+  const {
+    data = [],
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+  } = useBarberReviews({ enabled: true });
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const { id, debug } = await resolveBarberId();
-        if (!cancelled) setDebug(debug);
-     
-        const barber = await SecureStore.getItemAsync("barber");
-        const { data } = await api.get<Review[]>(`/barber-reviews?barber_id=${barber}`);
-        if (!cancelled) setItems(Array.isArray(data) ? data : []);
-      } catch (e: any) {
-        if (!cancelled) {
-          setError(e?.message || "Error al cargar reseñas");
-          setItems([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    load();
-    return () => { cancelled = true; };
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   const avg = useMemo(() => {
-    if (!items.length) return 0;
-    const sum = items.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
-    return Math.round((sum / items.length) * 10) / 10;
-  }, [items]);
+    if (!data.length) return 0;
+    const sum = data.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
+    return Math.round((sum / data.length) * 10) / 10;
+  }, [data]);
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: UI.bg,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <ActivityIndicator />
-        <Text style={{ marginTop: 8 }}>Cargando reseñas…</Text>
+        <Text style={{ marginTop: 8, color: UI.text }}>Cargando reseñas…</Text>
       </View>
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
-      <View style={{ padding: 16, backgroundColor: "#fff" }}>
-        <Text style={{ color: "#991B1B" }}>No se pudieron cargar reseñas: {error}</Text>
-        {/* Debug visible opcional: comenta si no lo quieres en prod */}
-        {debug?.length ? (
-          <Text style={{ marginTop: 8, color: "#6B7280", fontSize: 12 }}>
-            Debug: {debug.join(" | ")}
-          </Text>
-        ) : null}
+      <View style={{ padding: 16 }}>
+        <Text style={{ color: UI.danger, fontWeight: "600", marginBottom: 8 }}>
+          No se pudieron cargar las reseñas.
+        </Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff" }}>
-      {/* Encabezado */}
-      <View style={{ marginBottom: 12 }}>
-        <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8 }}>
-          Mis Evaluaciones
-        </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Stars value={avg} />
-          <Text style={{ color: "#4B5563" }}>
-            {items.length ? `${avg} / 5` : "Sin calificaciones"}
+    <View style={{ flex: 1, backgroundColor: UI.bg, padding: 16 }}>
+      {/* Header */}
+      <View
+        style={{
+          marginBottom: 14,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <View>
+          <Text style={{ fontSize: 20, fontWeight: "800", color: UI.text }}>
+            Mis Evaluaciones
           </Text>
-          <Text style={{ color: "#9CA3AF" }}>
-            · {items.length} {items.length === 1 ? "reseña" : "reseñas"}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
+            <Stars value={avg} />
+            <Text style={{ color: UI.text }}>
+              {data.length ? `${avg} / 5` : "Sin calificaciones"}
+            </Text>
+            <Text style={{ color: UI.text }}>
+              · {data.length} {data.length === 1 ? "reseña" : "reseñas"}
+            </Text>
+            {isRefetching ? <ActivityIndicator style={{ marginLeft: 6 }} /> : null}
+          </View>
+        </View>
+
+        {/* Chip promedio */}
+
+        {/* Chip promedio */}
+        <View
+          style={{
+            backgroundColor: UI.bg, // fondo blanco
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 999,
+            flexDirection: "row",
+            alignItems: "center",
+            borderWidth: 1,
+            borderColor: UI.cardBorder,
+            ...UI.shadow,
+          }}
+        >
+          <Ionicons name="star" size={14} color={UI.accent} />
+          <Text style={{ marginLeft: 6, color: UI.text, fontWeight: "700" }}>
+            {avg.toFixed(1)}
           </Text>
         </View>
+
+
       </View>
 
       {/* Lista */}
       <FlatList
-        data={items}
+        data={data}
         keyExtractor={(it) => String(it.id)}
         contentContainerStyle={{ paddingBottom: 16 }}
-        ListEmptyComponent={
-          <View style={{ padding: 16 }}>
-            <Text style={{ color: "#6B7280" }}>Aún no tienes evaluaciones.</Text>
-          </View>
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
+        ListEmptyComponent={<EmptyState />}
         renderItem={({ item }) => (
           <View
             style={{
-              backgroundColor: "#F9FAFB",
+              backgroundColor: UI.cardBg,
               borderRadius: 16,
               padding: 16,
               marginBottom: 12,
               borderWidth: 1,
-              borderColor: "#E5E7EB",
+              borderColor: UI.cardBorder,
+              ...UI.shadow,
             }}
           >
-            {/* Fecha + estrellas (sin nombre de cliente) */}
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text style={{ color: "#6B7280" }}>{formatDate(item.created_at)}</Text>
+            {/* Cabecera del item */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 8,
+                justifyContent: "space-between",
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                <InitialAvatar />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: "700", color: UI.text }}>Cliente</Text>
+                  <Text style={{ color: UI.text, fontSize: 12 }}>
+                    {formatDate(item.createdAtISO)}
+                  </Text>
+                </View>
+              </View>
               <Stars value={item.rating} />
             </View>
 
-            {/* Comentario con fallback */}
+            {/* Comentario */}
             {item.comment && item.comment.trim().length > 0 ? (
-              <Text style={{ marginTop: 8 }}>{item.comment}</Text>
+              <Text style={{ marginTop: 4, color: UI.text }}>{item.comment}</Text>
             ) : (
-              <Text style={{ marginTop: 8, color: "#9CA3AF" }}>Sin comentarios</Text>
+              <Text style={{ marginTop: 4, color: UI.text }}>Sin comentarios</Text>
             )}
           </View>
         )}
@@ -324,5 +264,3 @@ export default function BarberReviewsPanel() {
     </View>
   );
 }
-
-
