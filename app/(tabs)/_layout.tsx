@@ -138,6 +138,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="despachos/[id]" options={{ href: null, headerShown: false }} />
         <Tabs.Screen name="appointments/[id]" options={{ href: null, headerShown: false }} />
         <Tabs.Screen name="changePassword" options={{ href: null, headerShown: false }} />
+        <Tabs.Screen name="reviews" options={{ href: null, headerShown: false }} />
       </Tabs>
     </View>
   );
