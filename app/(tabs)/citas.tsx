@@ -358,10 +358,10 @@ export default function CitasScreen() {
         <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.3)" }} onPress={() => setActionId(null)} />
 
         <View style={{ backgroundColor: "#fff", padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
-          <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text, marginBottom: 12 }}>
-            Acciones
+          <Text style={{ fontSize: 16, fontWeight: "900", color: COLORS.text, marginBottom: 14 }}>
+            Acciones:
           </Text>
-          <View style={{ gap: 8 }}>
+          <View style={{ paddingBottom:5, gap: 12 }}>
             <Pressable
               onPress={() => {
                 if (actionId == null) return;
@@ -434,6 +434,42 @@ export default function CitasScreen() {
             >
               <Text style={{ color: COLORS.text, fontWeight: "700" }}>Reprogramar</Text>
             </Pressable>
+            <Pressable
+              onPress={() => {
+                /*if (actionId == null) return;
+                const a: any =
+                  actionItem ??
+                  (Array.isArray(data) ? (data as Appointment[]).find(x => x.id === actionId) : null) ??
+                  {};
+                setActionId(null); // cerrar acciones
+                requestAnimationFrame(() => {
+                  openRescheduleFor(a); // abrir modal de reprogramar
+                });*/
+              }}
+              style={({ pressed }) => ({
+                padding: 12,
+                borderRadius: 12,
+                backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
+              })}
+            >
+              <Text style={{ color: COLORS.confirmado, fontWeight: "700" }}>En proceso</Text>
+            </Pressable>
+
+             {/* 🔽 marcar completada */}
+             <Pressable
+              onPress={() => {
+                /*if (actionId == null) return;
+                setConfirmId(actionId); // abrir modal de confirmación
+                setActionId(null);   */   // cerrar acciones
+              }}
+              style={({ pressed }) => ({
+                padding: 12,
+                borderRadius: 12,
+                backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
+              })}
+            >
+              <Text style={{ color: COLORS.completado  , fontWeight: "800" }}>Completar cita</Text>
+            </Pressable>
 
             {/* 🔽 Cancelar → abre confirmación */}
             <Pressable
@@ -450,6 +486,7 @@ export default function CitasScreen() {
             >
               <Text style={{ color: COLORS.danger, fontWeight: "800" }}>Cancelar cita</Text>
             </Pressable>
+            
           </View>
         </View>
       </Modal>
