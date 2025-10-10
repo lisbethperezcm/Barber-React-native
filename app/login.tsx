@@ -33,6 +33,11 @@ const LoginScreen = () => {
       { email, password },
       {
         onSuccess: (data) => {
+
+          if(data?.user.role !== 'Barbero' && data?.user.role !== 'Cliente'){
+            Alert.alert("No autorizado", "Acceso no permitido para este usuario.");
+            return;
+          }
           console.log("Respuesta completa del login:", data); // <-- ver todo el objeto
           Alert.alert("Token recibido", data?.access_token ?? "No hay token");
           // éxito → llevar a tabs
@@ -42,7 +47,8 @@ const LoginScreen = () => {
         },
         onError: (error) => {
           console.log("Error en el login:", error);
-          Alert.alert("Error", "Credenciales inválidas o servidor no disponible");
+          Alert.alert("Credenciales inválidas", "El correo o la contraseña no son correctos.");
+        
         },
       }
     );
