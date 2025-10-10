@@ -1,110 +1,106 @@
 // assets/src/features/reviews/useBarberReviews.ts
-import { api } from "@/assets/src/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import React from "react";
-import * as secure from "../../lib/secure";
+import * as SecureStore from "expo-secure-store";
+import { api } from "../../lib/api";
 
+// ---- API: tal como llega del backend ----
+type ApiReview = {
+  id: number;
+  rating: number;
+  comment: string | null;
+  client: string;         // "Bryan Marte"
+  barber: string;         // "Miguel García"
+  appointment_id: number; // 144
+  created_at: string;     // ISO
+  created_by: string | null;
+  updated_at: string;     // ISO
+  updated_by: string | null;
+};
 
-
+// ---- App (normalizado a camelCase) ----
 export type BarberReview = {
   id: number;
   rating: number;
-  comment: string;
-  client: string;
-  barber: string;
-  appointment_id: number;
-  created_at: string;
+  comment: string;       // nunca null
+  clientName: string;
+  barberName: string;
+  appointmentId: number;
+  createdAtISO: string;
+  updatedAtISO: string;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 };
 
-type RawList = any;
-type CreateBody = {
+// Body para crear
+export type CreateBarberReviewBody = {
   client_id: number;
   appointment_id: number | string;
   rating: number;
   comment?: string;
 };
 
-function coerceList(payload: RawList): BarberReview[] {
-  const src = payload?.original ?? payload ?? {};
-  const list = Array.isArray(src?.data) ? src.data : (Array.isArray(src) ? src : []);
-  return list.map((r: any) => ({
-    id: Number(r.id),
-    rating: Number(r.rating),
-    comment: String(r.comment ?? ""),
-    client: String(r.client ?? ""),
-    barber: String(r.barber ?? ""),
-    appointment_id: Number(r.appointment_id),
-    created_at: String(r.created_at ?? ""),
-  }));
+// Normalizador
+function normalize(r: ApiReview): BarberReview {
+  return {
+    id: r.id,
+    rating: Number(r.rating) || 0,
+    comment: r.comment ?? "",
+    clientName: r.client ?? "",
+    barberName: r.barber ?? "",
+    appointmentId: Number(r.appointment_id),
+    createdAtISO: r.created_at ?? "",
+    updatedAtISO: r.updated_at ?? "",
+    createdBy: r.created_by ?? null,
+    updatedBy: r.updated_by ?? null,
+  };
 }
 
-async function getToken(): Promise<string | null> {
-  return (await secure.get("accessToken")) ?? null;
-}
-
-/** LISTAR reviews (scope por barbero logueado -> ?barber_id=) */
-export function useBarberReviews(opts?: { barberScoped?: boolean }) {
-  const { barberScoped = true } = opts || {};
-  const [barberId, setBarberId] = React.useState<number | null>(null);
-
-  React.useEffect(() => {
-    (async () => {
-      const a = await secure.get("barber");
-      const b = await secure.get("barber_id");
-      const c = await secure.get("barberId");
-      const parseId = (v: string | null) => {
-        if (!v) return null;
-        try {
-          const j = JSON.parse(v);
-          const raw = j?.id ?? j?.barber_id ?? j?.barberId ?? j;
-          const n = Number(raw);
-          return Number.isFinite(n) ? n : null;
-        } catch {
-          const n = Number(v);
-          return Number.isFinite(n) ? n : null;
-        }
-      };
-      setBarberId(parseId(a) ?? parseId(b) ?? parseId(c));
-    })();
-  }, []);
+// Listado por barbero (lee "barber" del SecureStore y lo manda como barber_id)
+export function useBarberReviews(opts: { enabled?: boolean } = {}) {
+  const { enabled = false } = opts;
 
   return useQuery({
-    queryKey: ["barber-reviews", barberScoped ? barberId : "all"],
-    enabled: barberScoped ? barberId !== null : true,
-    queryFn: async () => {
-      const token = await getToken();
-      const params = barberScoped && barberId ? { barber_id: barberId } : undefined;
-      const { data } = await api.get("/barber-reviews", {
-        params,
-        headers: {
-          Accept: "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
+    queryKey: ["barberReviews", "byBarber"],
+    queryFn: async (): Promise<BarberReview[]> => {
+      const barber = await SecureStore.getItemAsync("barber");
+      let barberId: number | null = null;
+
+      if (barber) {
+        try {
+          const parsed = JSON.parse(barber);
+          barberId = typeof parsed === "number" ? parsed : Number(parsed?.id ?? parsed);
+          if (!Number.isFinite(barberId)) barberId = null;
+        } catch {
+          const n = Number(barber);
+          barberId = Number.isFinite(n) ? n : null;
+        }
+      }
+
+      const { data } = await api.get<{ data: ApiReview[] }>("/barber-reviews", {
+        params: barberId ? { barber_id: barberId } : undefined,
       });
-      return coerceList(data);
+
+      const list = data?.data ?? [];
+      return list.map(normalize);
     },
+    staleTime: 60_000,
+    enabled,
   });
 }
 
-/** CREAR review */
+// Crear review + invalidar cache
 export function useCreateBarberReview() {
   const qc = useQueryClient();
+
   return useMutation({
-    mutationFn: async (body: CreateBody) => {
-      const token = await getToken();
-      const { data } = await api.post("/barber-reviews", body, {
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-      });
+    mutationFn: async (body: CreateBarberReviewBody) => {
+      const { data } = await api.post("/barber-reviews", body);
       return data;
     },
     onSuccess: async () => {
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ["barber-reviews"] }),
-        qc.invalidateQueries({ queryKey: ["barber-reviews", "all"] }),
+        qc.invalidateQueries({ queryKey: ["barberReviews"] }),
+        qc.invalidateQueries({ queryKey: ["barberReviews", "byBarber"] }),
       ]);
     },
   });

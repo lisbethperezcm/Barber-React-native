@@ -6,7 +6,8 @@ import { api } from "../../lib/api";
 
 type LoginPayload = { email: string; password: string };
 type LoginResponse = {
-  token: string; access_token: string; refreshToken?: string 
+  token: string; access_token: string; refreshToken?: string;
+  user: { role: string; full_name: string; client_id?: number; barber_id?: number };
 };
 
 
@@ -25,6 +26,9 @@ export function useLogin() {
 
       if (!token) throw new Error("No llegó access_token en la respuesta.");
 
+      if( data?.user.role !== 'Barbero' && data?.user.role !== 'Cliente'){
+        throw new Error("Acceso no permitido para este usuario.");
+      }
       await SecureStore.setItemAsync("accessToken", token);
       await SecureStore.setItemAsync("tokenType", type);
       await SecureStore.setItemAsync("role", JSON.stringify(data.user.role));

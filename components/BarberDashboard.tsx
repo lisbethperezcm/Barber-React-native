@@ -4,7 +4,7 @@ import type { NextAppointment } from "@/assets/src/features/reports/useBarberSum
 import { useBarberSummary } from "@/assets/src/features/reports/useBarberSummary";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React, { useCallback, useContext, useEffect } from "react";
+import { useCallback, useContext, useEffect } from "react";
 import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 /* ===================== Helpers ===================== */
@@ -59,7 +59,7 @@ export default function BarberDashboard({ styles }: { styles?: any }) {
   useFocusEffect(
     useCallback(() => {
       refetch?.();
-      return () => {};
+      return () => { };
     }, [refetch])
   );
 
@@ -92,7 +92,11 @@ export default function BarberDashboard({ styles }: { styles?: any }) {
         <View style={s.kpiCol}>
           <Text style={s.kpiMuted}>Ingresos estimados</Text>
           <Text style={s.kpiValue}>
-            {`RD$ ${Number(summary?.estimated_income ?? 0).toLocaleString("es-DO")}`}
+            {`RD$ ${(summary?.estimated_income ?? 0).toLocaleString("es-DO", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`}
+
           </Text>
         </View>
         <View style={s.kpiColRight}>
@@ -137,14 +141,15 @@ export default function BarberDashboard({ styles }: { styles?: any }) {
           <View style={s.quickIcon}><Text>📦</Text></View>
           <Text style={s.quickText}>Despachos</Text>
         </Pressable>
-        <Pressable style={s.quickItem} onPress={() => router.push("/(tabs)/citas")}>
-          <View style={s.quickIcon}><Text>📅</Text></View>
-          <Text style={s.quickText}>Citas</Text>
-        </Pressable>
-        {/* 🔧 Fix: antes usaba styles.quickItem / styles.quickText */}
+        {/* Evaluaciones */}
         <Pressable style={s.quickItem} onPress={() => router.push("/(tabs)/reviews")}>
           <Text style={{ fontSize: 22 }}>⭐</Text>
           <Text style={s.quickText}>Evaluaciones</Text>
+        </Pressable>
+        {/* Servicios */}
+        <Pressable style={styles.quickItem} onPress={() => router.push("/(tabs)/servicios")}>
+          <Text style={{ fontSize: 22 }}>✂️</Text>
+          <Text style={styles.quickText}>Servicios</Text>
         </Pressable>
       </View>
 
@@ -153,9 +158,33 @@ export default function BarberDashboard({ styles }: { styles?: any }) {
 
       {(() => {
         const items = summary?.next_appointments ?? [];
-        // Agrupar por fecha
+
+        if (!items.length) {
+          return (
+            <View
+              style={{
+                backgroundColor: COLORS.card,
+                borderColor: COLORS.border,
+                borderWidth: 1,
+                borderRadius: 14,
+                padding: 20,
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <Text style={{ color: COLORS.text, fontWeight: "600", marginBottom: 6 }}>
+                No tienes próximas citas
+              </Text>
+              <Text style={{ color: COLORS.textMuted, textAlign: "center" }}>
+                Cuando agendes nuevas citas aparecerán aquí.
+              </Text>
+            </View>
+          );
+        }
+
+        // 🔹 Si hay citas, agrupar y mostrar
         const byDate = new Map<string, NextAppointment[]>();
-        items.forEach(a => {
+        items.forEach((a) => {
           const key = a.date || "Sin fecha";
           if (!byDate.has(key)) byDate.set(key, []);
           byDate.get(key)!.push(a);
@@ -172,7 +201,7 @@ export default function BarberDashboard({ styles }: { styles?: any }) {
               const initials = (a.client || "")
                 .trim()
                 .split(/\s+/)
-                .map(w => w[0])
+                .map((w) => w[0])
                 .join("")
                 .slice(0, 2)
                 .toUpperCase();
@@ -186,7 +215,7 @@ export default function BarberDashboard({ styles }: { styles?: any }) {
               return (
                 <View key={a.id ?? i} style={s.apptCard}>
                   <View style={s.apptRow}>
-                    {/* IZQUIERDA: Cliente + Fecha/Hora + Servicios */}
+                    {/* IZQUIERDA */}
                     <View style={s.apptLeftCol}>
                       <View style={s.apptClientRow}>
                         <View style={s.circleAvatar}>
@@ -202,7 +231,7 @@ export default function BarberDashboard({ styles }: { styles?: any }) {
                       {services ? <Text style={s.apptMuted}>{services}</Text> : null}
                     </View>
 
-                    {/* DERECHA: Precio (arriba) + Duración (abajo) */}
+                    {/* DERECHA */}
                     <View style={s.apptRightCol}>
                       <Text style={s.apptAmount}>{price}</Text>
                       {duration ? <Text style={s.apptMutedRight}>{duration}</Text> : null}
@@ -214,6 +243,7 @@ export default function BarberDashboard({ styles }: { styles?: any }) {
           </View>
         ));
       })()}
+
 
     </ScrollView>
   );
