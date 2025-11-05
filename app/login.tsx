@@ -39,7 +39,7 @@ const LoginScreen = () => {
             return;
           }
           console.log("Respuesta completa del login:", data); // <-- ver todo el objeto
-          Alert.alert("Token recibido", data?.access_token ?? "No hay token");
+     //     Alert.alert("Inicio de sesion exitoso", data?.access_token ?? "No hay token");
           // éxito → llevar a tabs
           router.replace("/(tabs)");
 
