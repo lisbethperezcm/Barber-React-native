@@ -41,11 +41,14 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+
+
   const canSubmit = useMemo(() => {
     const emailOk = /\S+@\S+\.\S+/.test(email);
     const passOk = password.length >= 8 && password === confirm;
     return firstName && lastName && emailOk && phone && address && passOk;
   }, [firstName, lastName, email, phone, address, password, confirm]);
+
 
   const handleRegister = () => {
     // Validación mínima (el backend también valida)
@@ -83,6 +86,12 @@ export default function RegisterScreen() {
       }
     );
   };
+
+  // Al menos: 1 mayúscula, 1 número, 1 carácter especial, 8+ y sin espacios
+  const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}\[\]|\\:;"'<>,.?/~`])[^\s]{8,}$/;
+  const PASSWORD_ERROR_TEXT =
+    "Debe tener 8+ caracteres, 1 mayúscula, 1 número, 1 carácter especial y sin espacios.";
+
 
   return (
     <>
@@ -164,14 +173,15 @@ export default function RegisterScreen() {
           />
 
           {/* Contraseña con ojito + icono info */}
-         
+
+          {/* Contraseña */}
           <View style={styles.rowBetween}>
-          <Text style={styles.label}>Contraseña</Text>
-          <Pressable
+            <Text style={styles.label}>Contraseña</Text>
+            <Pressable
               onPress={() =>
                 Alert.alert(
                   "Requisitos de contraseña",
-                  "- Mínimo 8 caracteres\n- Al menos una mayúscula\n- Al menos un número\n- Sin espacios"
+                  "- Mínimo 8 caracteres\n- Al menos una mayúscula\n- Al menos un número\n- Al menos un carácter especial\n- Sin espacios"
                 )
               }
               style={{ marginLeft: 8 }}
@@ -179,36 +189,74 @@ export default function RegisterScreen() {
               <Ionicons name="information-circle-outline" size={22} color={COLORS.brand} />
             </Pressable>
           </View>
-            <View style={[styles.inputWrapper, { flex: 1 }]}>
-              <TextInput
-                style={[styles.input, { flex: 1, borderWidth: 0 }]}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="**********"
-                placeholderTextColor={COLORS.muted}
-                secureTextEntry={!showPassword}
-              />
-              <Pressable onPress={() => setShowPassword((prev) => !prev)}>
-                <Ionicons
-                  name={showPassword ? "eye-off" : "eye"}
-                  size={22}
-                  color={COLORS.muted}
-                />
-              </Pressable>
-            </View>
 
-            
+          <View
+            style={[
+              styles.inputWrapper,
+              {
+                flex: 1,
+                borderColor:
+                  password.length === 0
+                    ? COLORS.border
+                    : PASSWORD_REGEX.test(password)
+                      ? COLORS.border
+                      : "red",
+              },
+            ]}
+          >
+            <TextInput
+              style={[styles.input, { flex: 1, borderWidth: 0 }]}
+              value={password}
+              onChangeText={(t) => setPassword(t.replace(/\s/g, ""))} // sin espacios
+              placeholder="**********"
+              placeholderTextColor={COLORS.muted}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+            />
+            <Pressable onPress={() => setShowPassword((prev) => !prev)}>
+              <Ionicons name={showPassword ? "eye-off" : "eye"} size={22} color={COLORS.muted} />
+            </Pressable>
+          </View>
 
-          {/* Confirmación con ojito */}
+          {password.length > 0 && (
+            <Text
+              style={{
+                marginTop: 6,
+                fontSize: 12,
+                color: PASSWORD_REGEX.test(password) ? "green" : "red",
+              }}
+            >
+              {PASSWORD_REGEX.test(password) ? "Contraseña válida ✓" : PASSWORD_ERROR_TEXT}
+            </Text>
+          )}
+
+
+
           <Text style={styles.label}>Confirmar contraseña</Text>
-          <View style={styles.inputWrapper}>
+          <View
+            style={[
+              styles.inputWrapper,
+              {
+                borderColor:
+                  confirm.length === 0
+                    ? COLORS.border
+                    : confirm !== password
+                      ? "red" // 🔴 si no coinciden
+                      : COLORS.border, // 🟢 si coinciden
+              },
+            ]}
+          >
             <TextInput
               style={[styles.input, { flex: 1, borderWidth: 0 }]}
               value={confirm}
-              onChangeText={setConfirm}
+              onChangeText={(t) => setConfirm(t.replace(/\s/g, ""))} // sin espacios
               placeholder="*********"
               placeholderTextColor={COLORS.muted}
               secureTextEntry={!showConfirm}
+              autoCapitalize="none"
+              textContentType="none"
+              autoComplete="off"
+              importantForAutofill="no"
             />
             <Pressable onPress={() => setShowConfirm((prev) => !prev)}>
               <Ionicons
@@ -218,6 +266,22 @@ export default function RegisterScreen() {
               />
             </Pressable>
           </View>
+
+          {/* 🔹 Mensaje debajo del input */}
+          {confirm.length > 0 && confirm !== password && (
+            <Text style={{ marginTop: 6, fontSize: 12, color: "red" }}>
+              Las contraseñas no coinciden.
+            </Text>
+          )}
+
+          {confirm.length > 0 && confirm === password && (
+            <Text style={{ marginTop: 6, fontSize: 12, color: "green" }}>
+              Las contraseñas coinciden ✓
+            </Text>
+          )}
+
+
+
 
           <Pressable
             disabled={!canSubmit || isPending}

@@ -4,10 +4,12 @@ import { useAppointmentsByClient, type Appointment } from "@/assets/src/features
 import { api } from "@/assets/src/lib/api";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import Loader from "@/components/Loader";
+import SuccessAnimatedModal from "@/components/SuccessAnimatedModal";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+
 import {
   ActivityIndicator,
   Alert,
@@ -79,9 +81,14 @@ export default function CitasScreen() {
   const [successVisible, setSuccessVisible] = useState(false);
 
   // ✅ completar cita
-const [confirmCompleteId, setConfirmCompleteId] = useState<number | null>(null);
-const [completeLoading, setCompleteLoading] = useState(false);
-const [successCompleteVisible, setSuccessCompleteVisible] = useState(false);
+  const [confirmCompleteId, setConfirmCompleteId] = useState<number | null>(null);
+  const [completeLoading, setCompleteLoading] = useState(false);
+  const [successCompleteVisible, setSuccessCompleteVisible] = useState(false);
+
+  // ✅ Estados para "En proceso"
+  const [confirmProcessId, setConfirmProcessId] = useState<number | null>(null);
+  const [processLoading, setProcessLoading] = useState(false);
+  const [successProcessVisible, setSuccessProcessVisible] = useState(false);
 
   // ⬇️ NUEVO: estado para reprogramar
   const [showReschedule, setShowReschedule] = useState(false);
@@ -95,6 +102,7 @@ const [successCompleteVisible, setSuccessCompleteVisible] = useState(false);
     totalMinutes: number;
     totalPrice: number;
   }>(null);
+  
 
   const clientQ = useAppointmentsByClient({ enabled: !isBarber });
   const barberQ = useAppointmentsByBarber({ enabled: isBarber });
@@ -106,6 +114,53 @@ const [successCompleteVisible, setSuccessCompleteVisible] = useState(false);
   const refetch = isBarber ? barberQ.refetch : clientQ.refetch;
 
   const isRefreshing = !isLoading && isFetching;
+
+// ✅ Canonicaliza el estado aunque venga como número, texto o campo anidado
+function getCanonicalStatus(a: any): "reservada" | "en proceso" | "cancelada" | "completada" | "" {
+  if (!a) return "";
+  const candidates: any[] = [
+    a.status, a.estado, a.state, a.current_status, a.status_text, a.statusName,
+    a?.status?.code, a?.status?.key, a?.status?.name,
+    a?.status_id, a?.statusId, a?.status_code,
+  ].filter(v => v !== undefined && v !== null);
+
+  for (const raw of candidates) {
+    const n = Number(raw);
+    if (!Number.isNaN(n)) {
+      if (n === 4) return "reservada";
+      if (n === 5) return "en proceso";
+      if (n === 6) return "cancelada";
+      if (n === 7) return "completada";
+    }
+    const s = String(raw).trim().toLowerCase();
+    if (["4","reservada","reserved","reserva","pendiente","pending","booked"].includes(s)) return "reservada";
+    if (["5","en proceso","en_proceso","in process","in_process","processing","procesando"].includes(s)) return "en proceso";
+    if (["6","cancelada","cancelado","cancelled"].includes(s)) return "cancelada";
+    if (["7","completada","completado","finalizada","completed","done","finalizado"].includes(s)) return "completada";
+  }
+  return "";
+}
+
+// 🔎 Cita seleccionada (reusa actionItem/actionId/data)
+const selectedAppointment = useMemo(() => {
+  const a: any =
+    actionItem ??
+    (Array.isArray(data) ? (data as Appointment[]).find(x => x.id === actionId) : null);
+  return a ?? null;
+}, [actionItem, actionId, data]);
+
+// 👁️ Visibilidad por reglas que pediste
+const vis = useMemo(() => {
+  const sk = getCanonicalStatus(selectedAppointment);
+  // default -> tratamos desconocido como "reservada"
+  const base = { detail: true, reschedule: true, process: true, complete: false, cancel: true };
+
+  if (sk === "reservada")   return { detail: true,  reschedule: true,  process: true,  complete: false, cancel: true  };
+  if (sk === "en proceso")  return { detail: true,  reschedule:  false,  process: false, complete: true,  cancel: true  };
+  if (sk === "cancelada")   return { detail: true,  reschedule: false, process: false, complete: false, cancel: false };
+  if (sk === "completada")  return { detail: true,  reschedule: false, process: false, complete: false, cancel: false };
+  return base;
+}, [selectedAppointment]);
 
   // Navegar al detalle desde el modal
   const handleViewDetail = () => {
@@ -201,24 +256,45 @@ const [successCompleteVisible, setSuccessCompleteVisible] = useState(false);
   }
 
   // ✅ Completar (PUT) — tatus: 7
-async function completeAppointment(appointmentId: number) {
-  try {
-    setCompleteLoading(true);
-    await api.put(`/appointments/${appointmentId}/status`, { status: 7 }); // 7 = Completada
-    setConfirmCompleteId(null);
-    setSuccessCompleteVisible(true);
-    refetch(); // refresca la lista
-    setTimeout(() => setSuccessCompleteVisible(false), 4000);
-  } catch (err: any) {
-    const msg =
-      err?.response?.data?.message ||
-      err?.message ||
-      "No se pudo completar la cita.";
-    Alert.alert("Error", msg);
-  } finally {
-    setCompleteLoading(false);
+  async function completeAppointment(appointmentId: number) {
+    try {
+      setCompleteLoading(true);
+      await api.put(`/appointments/${appointmentId}/status`, { status: 7 }); // 7 = Completada
+      setConfirmCompleteId(null);
+      setSuccessCompleteVisible(true);
+      refetch(); // refresca la lista
+      setTimeout(() => setSuccessCompleteVisible(false), 4000);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "No se pudo completar la cita.";
+      Alert.alert("Error", msg);
+    } finally {
+      setCompleteLoading(false);
+    }
   }
-}
+  // ✅ Marcar En Proceso (PUT) — status: 5
+  async function processAppointment(appointmentId: number) {
+    try {
+      setProcessLoading(true);
+      await api.put(`/appointments/${appointmentId}/status`, { status: 5 }); // 5 = En proceso
+      setConfirmProcessId(null);   // ← cierra el modal de confirmación
+      setActionId(null);           // cierra acciones
+      setSuccessProcessVisible(true);
+      refetch();
+      setTimeout(() => setSuccessProcessVisible(false), 4000);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "No se pudo marcar la cita como En proceso.";
+      Alert.alert("Error", msg);
+    } finally {
+      setProcessLoading(false);
+    }
+  }
+
 
   // ⬇️ NUEVO: lista de barberos derivada de las citas (si ya tienes hook propio, úsalo)
   const barbersList = useMemo(() => {
@@ -386,7 +462,10 @@ async function completeAppointment(appointmentId: number) {
           <Text style={{ fontSize: 16, fontWeight: "900", color: COLORS.text, marginBottom: 14 }}>
             Acciones:
           </Text>
-          <View style={{ paddingBottom:5, gap: 12 }}>
+          
+
+          <View style={{ paddingBottom: 5, gap: 12 }}>
+
             <Pressable
               onPress={() => {
                 if (actionId == null) return;
@@ -396,6 +475,9 @@ async function completeAppointment(appointmentId: number) {
                   actionItem ??
                   (Array.isArray(data) ? (data as Appointment[]).find(x => x.id === actionId) : null) ??
                   {};
+                const sk = statusKey(a?.status); // "reservada" | "en proceso" | "cancelada" | "completada" | ""
+
+
 
                 setActionId(null); // cierra el modal primero
 
@@ -455,33 +537,32 @@ async function completeAppointment(appointmentId: number) {
                 padding: 12,
                 borderRadius: 12,
                 backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
+                display: vis.reschedule ? "flex" : "none",
               })}
             >
               <Text style={{ color: COLORS.text, fontWeight: "700" }}>Reprogramar</Text>
             </Pressable>
-            <Pressable
+
+            {isBarber && (<Pressable
               onPress={() => {
-                /*if (actionId == null) return;
-                const a: any =
-                  actionItem ??
-                  (Array.isArray(data) ? (data as Appointment[]).find(x => x.id === actionId) : null) ??
-                  {};
-                setActionId(null); // cerrar acciones
-                requestAnimationFrame(() => {
-                  openRescheduleFor(a); // abrir modal de reprogramar
-                });*/
+                if (actionId == null) return;
+                setConfirmProcessId(actionId); // abrir modal de confirmación
+
+                setActionId(null);
               }}
               style={({ pressed }) => ({
                 padding: 12,
                 borderRadius: 12,
                 backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
+                display: vis.process ? "flex" : "none",
+                
               })}
             >
               <Text style={{ color: COLORS.confirmado, fontWeight: "700" }}>En proceso</Text>
-            </Pressable>
+            </Pressable>)}
 
-             {/* 🔽 marcar completada */}
-             <Pressable
+            {/* 🔽 marcar completada */}
+            {isBarber && (<Pressable
               onPress={() => {
                 if (actionId == null) return;
                 setConfirmCompleteId(actionId); // abrir modal de confirmación
@@ -491,10 +572,11 @@ async function completeAppointment(appointmentId: number) {
                 padding: 12,
                 borderRadius: 12,
                 backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
+                display: vis.complete ? "flex" : "none",
               })}
             >
-              <Text style={{ color: COLORS.completado  , fontWeight: "800" }}>Completar cita</Text>
-            </Pressable>
+              <Text style={{ color: COLORS.completado, fontWeight: "800" }}>Completar cita</Text>
+            </Pressable>)}
 
             {/* 🔽 Cancelar → abre confirmación */}
             <Pressable
@@ -507,12 +589,14 @@ async function completeAppointment(appointmentId: number) {
                 padding: 12,
                 borderRadius: 12,
                 backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
+                display: vis.cancel ? "flex" : "none",
               })}
             >
               <Text style={{ color: COLORS.danger, fontWeight: "800" }}>Cancelar cita</Text>
             </Pressable>
-            
+
           </View>
+
         </View>
       </Modal>
 
@@ -615,17 +699,31 @@ async function completeAppointment(appointmentId: number) {
         </View>
       </Modal>
 
-      {/* 🔽 Popup verde de éxito */}
-      <Modal
+      {/* 🔽 Popup De cancelation*/}
+
+
+      <SuccessAnimatedModal
         visible={successVisible}
+        title="¡Cita Cancelada!"
+        message="La cita fue marcada como cancelada exitosamente."
+        durationMs={4000}
+        accentColor={COLORS.danger}   // ROjo cancel
+        emoji="⚠️"
+
+        onDone={() => setSuccessVisible(false)}
+      />
+
+      {/******* Modal de confirmación de EN PROCESO *******/}
+      <Modal
+        visible={confirmProcessId !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setSuccessVisible(false)}
+        onRequestClose={() => setConfirmProcessId(null)}
       >
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0,0,0,0.25)",
+            backgroundColor: "rgba(0,0,0,0.35)",
             justifyContent: "center",
             alignItems: "center",
             padding: 24,
@@ -638,155 +736,192 @@ async function completeAppointment(appointmentId: number) {
               borderRadius: 16,
               padding: 18,
               alignItems: "center",
-              gap: 8,
-              borderWidth: 2,
-              borderColor: COLORS.completado,
             }}
           >
-            <Text style={{ fontSize: 20 }}>✅</Text>
-            <Text
-              style={{ fontSize: 16, fontWeight: "800", color: COLORS.completado }}
+            {/* Ícono de “en progreso” dentro de círculo azul suave */}
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: "#DBEAFE", // azul suave
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 10,
+              }}
             >
-              Cita cancelada exitosamente
+              <Ionicons name="time-outline" size={28} color={COLORS.confirmado} />
+            </View>
+
+            <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text, textAlign: "center" }}>
+              ¿Marcar esta cita como <Text style={{ fontWeight: "900" }}>En proceso</Text>?
             </Text>
+
+            <Text style={{ color: COLORS.textMuted, textAlign: "center", marginTop: 4 }}>
+              Esta acción actualizará el estado de la cita a <Text style={{ fontWeight: "700" }}>En proceso</Text>.
+            </Text>
+
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 12,
+                justifyContent: "center",
+                marginTop: 14,
+                width: "100%",
+              }}
+            >
+              <Pressable
+                onPress={() => setConfirmProcessId(null)}
+                style={({ pressed }) => ({
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  minWidth: 120,
+                  alignItems: "center",
+                  borderRadius: 12,
+                  backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
+                })}
+                disabled={processLoading}
+              >
+                <Text style={{ fontWeight: "700", color: COLORS.text }}>No</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => confirmProcessId && processAppointment(confirmProcessId)}
+                style={({ pressed }) => ({
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  minWidth: 120,
+                  alignItems: "center",
+                  borderRadius: 12,
+                  backgroundColor: COLORS.confirmado,
+                  opacity: pressed || processLoading ? 0.85 : 1,
+                })}
+                disabled={processLoading}
+              >
+                {processLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={{ fontWeight: "800", color: "#fff" }}>Sí, en proceso</Text>
+                )}
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
-      {/* Modal de confirmación de COMPLETAR */}
-<Modal
-  visible={confirmCompleteId !== null}
-  transparent
-  animationType="fade"
-  onRequestClose={() => setConfirmCompleteId(null)}
->
-  <View
-    style={{
-      flex: 1,
-      backgroundColor: "rgba(0,0,0,0.35)",
-      justifyContent: "center",
-      alignItems: "center",
-      padding: 24,
-    }}
-  >
-    <View
-      style={{
-        backgroundColor: "#fff",
-        width: "100%",
-        borderRadius: 16,
-        padding: 18,
-        alignItems: "center",
-      }}
-    >
-      {/* Ícono de ok dentro de círculo verde suave */}
-      <View
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          backgroundColor: "#DCFCE7", // verde suave
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 10,
-        }}
+
+      {/******* Modal de confirmación de COMPLETAR *******/}
+      <Modal
+        visible={confirmCompleteId !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmCompleteId(null)}
       >
-        <Ionicons name="checkmark-done-outline" size={28} color={COLORS.completado} />
-      </View>
-
-      <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text, textAlign: "center" }}>
-        ¿Marcar esta cita como completada?
-      </Text>
-
-      <Text style={{ color: COLORS.textMuted, textAlign: "center", marginTop: 4 }}>
-        Esta acción actualizará el estado de la cita a <Text style={{ fontWeight: "700" }}>Completada</Text>.
-      </Text>
-
-      <View
-        style={{
-          flexDirection: "row",
-          gap: 12,
-          justifyContent: "center",
-          marginTop: 14,
-          width: "100%",
-        }}
-      >
-        <Pressable
-          onPress={() => setConfirmCompleteId(null)}
-          style={({ pressed }) => ({
-            paddingVertical: 10,
-            paddingHorizontal: 20,
-            minWidth: 120,
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.35)",
+            justifyContent: "center",
             alignItems: "center",
-            borderRadius: 12,
-            backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
-            borderWidth: 1,
-            borderColor: COLORS.border,
-          })}
-          disabled={completeLoading}
+            padding: 24,
+          }}
         >
-          <Text style={{ fontWeight: "700", color: COLORS.text }}>No</Text>
-        </Pressable>
+          <View
+            style={{
+              backgroundColor: "#fff",
+              width: "100%",
+              borderRadius: 16,
+              padding: 18,
+              alignItems: "center",
+            }}
+          >
+            {/* Ícono de ok dentro de círculo verde suave */}
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: "#DCFCE7", // verde suave
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 10,
+              }}
+            >
+              <Ionicons name="checkmark-done-outline" size={28} color={COLORS.completado} />
+            </View>
 
-        <Pressable
-          onPress={() => confirmCompleteId && completeAppointment(confirmCompleteId)}
-          style={({ pressed }) => ({
-            paddingVertical: 10,
-            paddingHorizontal: 20,
-            minWidth: 120,
-            alignItems: "center",
-            borderRadius: 12,
-            backgroundColor: COLORS.completado,
-            opacity: pressed || completeLoading ? 0.85 : 1,
-          })}
-          disabled={completeLoading}
-        >
-          {completeLoading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={{ fontWeight: "800", color: "#fff" }}>Sí, completar</Text>
-          )}
-        </Pressable>
-      </View>
-    </View>
-  </View>
-</Modal>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text, textAlign: "center" }}>
+              ¿Marcar esta cita como completada?
+            </Text>
 
-{/* ✅ Popup verde de éxito (completada) */}
-<Modal
-  visible={successCompleteVisible}
-  transparent
-  animationType="fade"
-  onRequestClose={() => setSuccessCompleteVisible(false)}
->
-  <View
-    style={{
-      flex: 1,
-      backgroundColor: "rgba(0,0,0,0.25)",
-      justifyContent: "center",
-      alignItems: "center",
-      padding: 24,
-    }}
-  >
-    <View
-      style={{
-        backgroundColor: "#fff",
-        width: "100%",
-        borderRadius: 16,
-        padding: 18,
-        alignItems: "center",
-        gap: 8,
-        borderWidth: 2,
-        borderColor: COLORS.completado,
-      }}
-    >
-      <Text style={{ fontSize: 20 }}>✅</Text>
-      <Text
-        style={{ fontSize: 16, fontWeight: "800", color: COLORS.completado }}
-      >
-        Cita marcada como completada
-      </Text>
-    </View>
-  </View>
-</Modal>
+            <Text style={{ color: COLORS.textMuted, textAlign: "center", marginTop: 4 }}>
+              Esta acción actualizará el estado de la cita a <Text style={{ fontWeight: "700" }}>Completada</Text>.
+            </Text>
+
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 12,
+                justifyContent: "center",
+                marginTop: 14,
+                width: "100%",
+              }}
+            >
+              <Pressable
+                onPress={() => setConfirmCompleteId(null)}
+                style={({ pressed }) => ({
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  minWidth: 120,
+                  alignItems: "center",
+                  borderRadius: 12,
+                  backgroundColor: pressed ? "#F3F4F6" : "#F9FAFB",
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
+                })}
+                disabled={completeLoading}
+              >
+                <Text style={{ fontWeight: "700", color: COLORS.text }}>No</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => confirmCompleteId && completeAppointment(confirmCompleteId)}
+                style={({ pressed }) => ({
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  minWidth: 120,
+                  alignItems: "center",
+                  borderRadius: 12,
+                  backgroundColor: COLORS.completado,
+                  opacity: pressed || completeLoading ? 0.85 : 1,
+                })}
+                disabled={completeLoading}
+              >
+                {completeLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={{ fontWeight: "800", color: "#fff" }}>Sí, completar</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+
+      {/*Cita completada exitosamente*/}
+      <SuccessAnimatedModal
+        visible={successCompleteVisible}
+        title="¡Cita completada!"
+        message="La cita fue marcada como completada exitosamente."
+        durationMs={4000}
+        accentColor={COLORS.completado}   // tu verde
+        emoji="✅"
+        onDone={() => setSuccessCompleteVisible(false)}
+      />
+
+
 
 
       {/* ⬇️ Modal de reprogramar */}
