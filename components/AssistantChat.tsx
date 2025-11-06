@@ -662,7 +662,7 @@ if (!yes) { pushBot("¿Deseas agendar ahora? Responde “sí” para continuar o
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={"height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 72 : 0}
       style={{ flex: 1 }}
       enabled
@@ -681,7 +681,7 @@ if (!yes) { pushBot("¿Deseas agendar ahora? Responde “sí” para continuar o
           <ScrollView
             ref={scrollRef}
             style={styles.messages}
-            contentContainerStyle={{ padding: 12, paddingBottom: 8 }}
+            contentContainerStyle={{ padding: 12, paddingBottom:Platform.OS === "ios" ? 72 : 8 }}
             onContentSizeChange={scrollToBottom}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
